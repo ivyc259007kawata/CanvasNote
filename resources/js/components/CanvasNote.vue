@@ -1,5 +1,20 @@
 <template>
-    <canvas ref="canvasEl" width="1000" height="600"></canvas>
+
+    <div class="canvas-page">
+
+        <div class="toolbar">
+            <button>🖱 選択</button>
+            <button>▭ 四角</button>
+            <button>📝 テキスト</button>
+            <button>✏ ペン</button>
+            <button>💾 保存</button>
+        </div>
+
+        <canvas ref="canvasEl" width="1000" height="600">
+        </canvas>
+
+    </div>
+
 </template>
 
 <script setup>
@@ -7,6 +22,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { Canvas, Rect } from 'fabric'
 
 const canvasEl = ref(null)
+const currentTool = ref('select')
 
 let canvas = null
 let handleKeydown = null
@@ -129,3 +145,36 @@ onUnmounted(() => {
     }
 })
 </script>
+
+<style scoped>
+.canvas-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+}
+
+.toolbar button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.toolbar button:hover {
+    background: #2563eb;
+}
+
+canvas {
+    border: 1px solid #ccc;
+    background: white;
+}
+</style>

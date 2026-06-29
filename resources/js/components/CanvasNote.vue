@@ -18,6 +18,21 @@
             <button @click="currentTool = 'pen'" :class="{ active: currentTool === 'pen' }">
                 ✏ ペン
             </button>
+            <div class="color-picker">
+
+                <button class="color" style="background:#000000" @click="currentColor = '#000000'">
+                </button>
+
+                <button class="color" style="background:#ff0000" @click="currentColor = '#ff0000'">
+                </button>
+
+                <button class="color" style="background:#0066ff" @click="currentColor = '#0066ff'">
+                </button>
+
+                <button class="color" style="background:#00aa00" @click="currentColor = '#00aa00'">
+                </button>
+
+            </div>
 
             <button @click="saveCanvas">
                 💾 保存
@@ -33,13 +48,14 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { Canvas, Rect, IText } from 'fabric'
+import { Canvas, Rect, IText, PencilBrush } from 'fabric'
 
 const canvasEl = ref(null)
 const currentTool = ref('select')
 
 let canvas = null
 let handleKeydown = null
+const currentColor = ref('#000000')
 
 // =========================
 // 保存
@@ -68,6 +84,12 @@ onMounted(() => {
     })
 
     canvas.renderAll()
+
+    canvas.freeDrawingBrush = new PencilBrush(canvas)
+    canvas.freeDrawingBrush.color = '#000000'
+    canvas.freeDrawingBrush.width = 3
+
+
 
     // =========================
     // 初期オブジェクト
@@ -109,7 +131,7 @@ onMounted(() => {
                 top: pointer.y,
                 width: 100,
                 height: 100,
-                fill: 'red'
+                fill: currentColor.value
             })
 
             canvas.add(rect)
@@ -130,7 +152,7 @@ onMounted(() => {
                 left: pointer.x,
                 top: pointer.y,
                 fontSize: 32,
-                fill: '#000'
+                fill: currentColor.value
             })
 
             canvas.add(text)
@@ -193,10 +215,24 @@ onMounted(() => {
 // ツール切替
 // =========================
 watch(currentTool, (tool) => {
-
     if (!canvas) return
+    if (tool === 'pen') {
+        canvas.isDrawingMode = true
+        canvas.freeDrawingBrush.color = currentColor.value
+    } else {
+        canvas.isDrawingMode = false
+    }
+})
 
-    canvas.isDrawingMode = (tool === 'pen')
+// =========================
+// 色の切替
+// =========================
+
+watch(currentColor, (color) => {
+    if (!canvas) return
+    if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = color
+    }
 
 })
 
@@ -247,6 +283,21 @@ onUnmounted(() => {
 .toolbar button.active {
     background: #1d4ed8;
 }
+
+.color-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.color {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    cursor: pointer;
+}
+
 
 canvas {
     border: 1px solid #ccc;

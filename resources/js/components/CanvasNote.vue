@@ -34,6 +34,14 @@
 
             </div>
 
+            <button @click="undo">
+                ↩ Undo
+            </button>
+
+            <button @click="redo">
+                ↪ Redo
+            </button>
+
             <button @click="saveCanvas">
                 💾 保存
             </button>
@@ -55,7 +63,13 @@ const currentTool = ref('select')
 
 let canvas = null
 let handleKeydown = null
+const history = []
+let historyIndex = -1
 const currentColor = ref('#000000')
+
+// Undo/Redo実行中は object:added などのイベントで
+// saveHistory が呼ばれないようにするためのフラグ
+let isRestoring = false
 
 // =========================
 // 保存
@@ -67,6 +81,51 @@ const saveCanvas = () => {
     localStorage.setItem('canvas', JSON.stringify(json))
 
     console.log('saved')
+}
+
+const saveHistory = () => {
+
+    // Undo/Redoによる読み込み中は履歴を積まない
+    if (isRestoring) return
+
+    if (!canvas) return
+
+    history.splice(historyIndex + 1)
+
+    history.push(JSON.stringify(canvas.toJSON()))
+
+    historyIndex = history.length - 1
+
+    console.log('history:', history.length)
+
+}
+
+const undo = async () => {
+
+    if (historyIndex <= 0) return
+
+    historyIndex--
+
+    isRestoring = true
+
+    await canvas.loadFromJSON(history[historyIndex])
+    canvas.renderAll()
+    isRestoring = false
+
+}
+
+const redo = async () => {
+
+    if (historyIndex >= history.length - 1) return
+
+    historyIndex++
+
+    isRestoring = true
+
+    await canvas.loadFromJSON(history[historyIndex])
+    canvas.renderAll()
+    isRestoring = false
+
 }
 
 onMounted(() => {
@@ -89,6 +148,11 @@ onMounted(() => {
     canvas.freeDrawingBrush.color = '#000000'
     canvas.freeDrawingBrush.width = 3
 
+    canvas.on('object:added', saveHistory)
+    canvas.on('object:modified', saveHistory)
+    canvas.on('object:removed', saveHistory)
+
+
 
 
     // =========================
@@ -103,6 +167,9 @@ onMounted(() => {
             fill: `hsl(${Math.random() * 360},70%,60%)`
         })
     )
+
+    // object:added で saveHistory がすでに呼ばれているので
+    // ここでの明示的な呼び出しは不要（重複防止）
 
     // =========================
     // キャンバスクリック
@@ -197,15 +264,17 @@ onMounted(() => {
     // =========================
     // 読み込み
     // =========================
-    window.loadCanvas = () => {
+    window.loadCanvas = async () => {
 
         const json = localStorage.getItem('canvas')
 
         if (!json) return
 
-        canvas.loadFromJSON(JSON.parse(json), () => {
-            canvas.renderAll()
-        })
+        isRestoring = true
+
+        await canvas.loadFromJSON(JSON.parse(json))
+        canvas.renderAll()
+        isRestoring = false
 
     }
 

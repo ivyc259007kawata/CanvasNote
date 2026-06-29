@@ -57,6 +57,32 @@
         <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
 
     </div>
+    <div class="layout">
+        <canvas ref="canvasEl" width="1000" height="600"></canvas>
+
+        <div class="property-panel">
+            <h3>プロパティ</h3>
+
+            <div v-if="activeObject">
+                <p>タイプ: {{ activeObject.type }}</p>
+
+                <label>色</label>
+                <input type="color" v-model="fillColor" />
+
+                <label>X</label>
+                <input type="number" v-model="left" />
+
+                <label>Y</label>
+                <input type="number" v-model="top" />
+
+                <button @click="deleteObject">削除</button>
+            </div>
+
+            <div v-else>
+                未選択
+            </div>
+        </div>
+    </div>
 
 </template>
 
@@ -139,11 +165,6 @@ const loadCanvasFile = async (event) => {
         return
     }
 
-    // loadFromJSON はオブジェクトを1つずつ追加するため、
-    // isRestoring を立てないと object:added が複数回発火し、
-    // 「開く」1回の操作なのに履歴が何件も積まれてしまう。
-    // そこで読み込み中は一旦ブロックし、完了後に
-    // 「開いた後の状態」をまとめて1件だけ履歴に積む。
     isRestoring = true
 
     try {
@@ -192,6 +213,14 @@ const redo = async () => {
 
 }
 
+const updateActiveObject = () => {
+    activeObject.value = canvas.getActiveObject()
+}
+
+const clearActiveObject = () => {
+    activeObject.value = null
+}
+
 onMounted(() => {
 
     if (!canvasEl.value) return
@@ -216,6 +245,11 @@ onMounted(() => {
     canvas.on('object:modified', saveHistory)
     canvas.on('object:removed', saveHistory)
 
+    // 選択系イベント
+    canvas.on('selection:created', updateActiveObject)
+    canvas.on('selection:updated', updateActiveObject)
+    canvas.on('selection:cleared', clearActiveObject)
+
 
 
 
@@ -232,8 +266,7 @@ onMounted(() => {
         })
     )
 
-    // object:added で saveHistory がすでに呼ばれているので
-    // ここでの明示的な呼び出しは不要（重複防止）
+
 
     // =========================
     // キャンバスクリック

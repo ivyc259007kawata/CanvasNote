@@ -3,11 +3,25 @@
     <div class="canvas-page">
 
         <div class="toolbar">
-            <button>🖱 選択</button>
-            <button>▭ 四角</button>
-            <button>📝 テキスト</button>
-            <button>✏ ペン</button>
-            <button>💾 保存</button>
+            <button @click="currentTool = 'select'" :class="{ active: currentTool === 'select' }">
+                🖱 選択
+            </button>
+
+            <button @click="currentTool = 'rectangle'" :class="{ active: currentTool === 'rectangle' }">
+                ▭ 四角
+            </button>
+
+            <button @click="currentTool = 'text'" :class="{ active: currentTool === 'text' }">
+                📝 テキスト
+            </button>
+
+            <button @click="currentTool = 'pen'" :class="{ active: currentTool === 'pen' }">
+                ✏ ペン
+            </button>
+
+            <button @click="saveCanvas">
+                💾 保存
+            </button>
         </div>
 
         <canvas ref="canvasEl" width="1000" height="600">
@@ -18,8 +32,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
-import { Canvas, Rect } from 'fabric'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { Canvas, Rect, IText } from 'fabric'
 
 const canvasEl = ref(null)
 const currentTool = ref('select')
@@ -27,13 +41,21 @@ const currentTool = ref('select')
 let canvas = null
 let handleKeydown = null
 
-onMounted(() => {
-    console.log('mounted')
+// =========================
+// 保存
+// =========================
+const saveCanvas = () => {
+    if (!canvas) return
 
-    if (!canvasEl.value) {
-        console.log('canvas null')
-        return
-    }
+    const json = canvas.toJSON()
+    localStorage.setItem('canvas', JSON.stringify(json))
+
+    console.log('saved')
+}
+
+onMounted(() => {
+
+    if (!canvasEl.value) return
 
     // =========================
     // Fabric 初期化
@@ -45,9 +67,6 @@ onMounted(() => {
         selection: true
     })
 
-    window.canvas = canvas
-
-    canvas.isDrawingMode = false
     canvas.renderAll()
 
     // =========================
@@ -59,82 +78,133 @@ onMounted(() => {
             top: 100,
             width: 120,
             height: 120,
-            fill: `hsl(${Math.random() * 360}, 70%, 60%)`
+            fill: `hsl(${Math.random() * 360},70%,60%)`
         })
     )
 
     // =========================
-    // クリックで四角追加（空白のみ）
+    // キャンバスクリック
     // =========================
     canvas.on('mouse:down', (opt) => {
-        if (opt.target) return
 
-        const pointer = canvas.getScenePoint(opt.e)
+        // 選択モード
+        if (currentTool.value === 'select') {
+            return
+        }
 
-        const rect = new Rect({
-            left: pointer.x,
-            top: pointer.y,
-            width: 100,
-            height: 100,
-            fill: 'red'
-        })
+        // ペンモード
+        if (currentTool.value === 'pen') {
+            return
+        }
 
-        canvas.add(rect)
-        canvas.setActiveObject(rect)
-        canvas.renderAll()
+        // 四角モード
+        if (currentTool.value === 'rectangle') {
+
+            if (opt.target) return
+
+            const pointer = canvas.getScenePoint(opt.e)
+
+            const rect = new Rect({
+                left: pointer.x,
+                top: pointer.y,
+                width: 100,
+                height: 100,
+                fill: 'red'
+            })
+
+            canvas.add(rect)
+            canvas.setActiveObject(rect)
+            canvas.renderAll()
+
+            return
+        }
+
+        // テキストモード
+        if (currentTool.value === 'text') {
+
+            if (opt.target) return
+
+            const pointer = canvas.getScenePoint(opt.e)
+
+            const text = new IText('テキスト', {
+                left: pointer.x,
+                top: pointer.y,
+                fontSize: 32,
+                fill: '#000'
+            })
+
+            canvas.add(text)
+            canvas.setActiveObject(text)
+            canvas.renderAll()
+
+            return
+        }
+
     })
 
     // =========================
-    // キー削除（安定版）
+    // Deleteキー
     // =========================
     handleKeydown = (e) => {
+
         if (e.key !== 'Delete' && e.key !== 'Backspace') return
 
         const active = canvas.getActiveObject()
 
-        console.log('active:', active)
-
         if (!active) return
 
-        // 複数選択対応（Fabric v7）
         if (active.type === 'activeSelection') {
+
             active.forEachObject((obj) => {
                 canvas.remove(obj)
             })
+
         } else {
+
             canvas.remove(active)
+
         }
 
         canvas.discardActiveObject()
         canvas.renderAll()
+
     }
 
     document.addEventListener('keydown', handleKeydown)
 
     // =========================
-    // 保存（テスト）
-    // =========================
-    window.saveCanvas = () => {
-        const json = canvas.toJSON()
-        localStorage.setItem('canvas', JSON.stringify(json))
-        console.log('saved')
-    }
-
-    // =========================
-    // 読み込み（テスト）
+    // 読み込み
     // =========================
     window.loadCanvas = () => {
+
         const json = localStorage.getItem('canvas')
+
         if (!json) return
 
         canvas.loadFromJSON(JSON.parse(json), () => {
             canvas.renderAll()
-            console.log('loaded')
         })
+
     }
+
 })
 
+// =========================
+// ツール切替
+// =========================
+watch(currentTool, (tool) => {
+
+    if (!canvas) return
+
+    canvas.isDrawingMode = (tool === 'pen')
+
+})
+
+// =========================
+// 終了処理
+// =========================
 onUnmounted(() => {
+
     if (handleKeydown) {
         document.removeEventListener('keydown', handleKeydown)
     }
@@ -143,6 +213,7 @@ onUnmounted(() => {
         canvas.dispose()
         canvas = null
     }
+
 })
 </script>
 
@@ -171,6 +242,10 @@ onUnmounted(() => {
 
 .toolbar button:hover {
     background: #2563eb;
+}
+
+.toolbar button.active {
+    background: #1d4ed8;
 }
 
 canvas {

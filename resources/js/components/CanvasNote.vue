@@ -42,6 +42,10 @@
                 ↪ Redo
             </button>
 
+            <button @click="openCanvas">
+                📂 開く
+            </button>
+
             <button @click="saveCanvas">
                 💾 保存
             </button>
@@ -49,6 +53,8 @@
 
         <canvas ref="canvasEl" width="1000" height="600">
         </canvas>
+
+        <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
 
     </div>
 
@@ -66,6 +72,8 @@ let handleKeydown = null
 const history = []
 let historyIndex = -1
 const currentColor = ref('#000000')
+const fileInput = ref(null)
+const activeObject = ref(null)
 
 // Undo/Redo実行中は object:added などのイベントで
 // saveHistory が呼ばれないようにするためのフラグ
@@ -77,27 +85,77 @@ let isRestoring = false
 const saveCanvas = () => {
     if (!canvas) return
 
-    const json = canvas.toJSON()
-    localStorage.setItem('canvas', JSON.stringify(json))
+    const json = JSON.stringify(canvas.toJSON())
 
-    console.log('saved')
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'CanvasNote.canvas'
+    a.click()
+
+    URL.revokeObjectURL(url)
 }
 
 const saveHistory = () => {
 
-    // Undo/Redoによる読み込み中は履歴を積まない
     if (isRestoring) return
-
     if (!canvas) return
+
+    const json = JSON.stringify(canvas.toJSON())
+
+    if (history[historyIndex] === json) return
 
     history.splice(historyIndex + 1)
 
-    history.push(JSON.stringify(canvas.toJSON()))
+    history.push(json)
 
     historyIndex = history.length - 1
+}
 
-    console.log('history:', history.length)
+const openCanvas = () => {
+    fileInput.value.click()
+}
 
+const loadCanvasFile = async (event) => {
+
+    const file = event.target.files[0]
+
+    // 同じファイルを連続で選んでも change が発火するようにリセット
+    // （input.value をクリアしておかないと2回目の選択が無視される）
+    event.target.value = ''
+
+    if (!file) return
+
+    let parsed
+
+    try {
+        const text = await file.text()
+        parsed = JSON.parse(text)
+    } catch (err) {
+        console.error('ファイルの読み込みに失敗しました', err)
+        alert('このファイルは読み込めませんでした。.canvas または .json 形式のファイルを選んでください。')
+        return
+    }
+
+    // loadFromJSON はオブジェクトを1つずつ追加するため、
+    // isRestoring を立てないと object:added が複数回発火し、
+    // 「開く」1回の操作なのに履歴が何件も積まれてしまう。
+    // そこで読み込み中は一旦ブロックし、完了後に
+    // 「開いた後の状態」をまとめて1件だけ履歴に積む。
+    isRestoring = true
+
+    try {
+        await canvas.loadFromJSON(parsed)
+        canvas.renderAll()
+    } finally {
+        isRestoring = false
+    }
+
+    // 開く操作自体もUndoで戻れるようにする
+    // （間違えて別ファイルを開いてしまった場合に備える）
+    saveHistory()
 }
 
 const undo = async () => {
@@ -108,9 +166,12 @@ const undo = async () => {
 
     isRestoring = true
 
-    await canvas.loadFromJSON(history[historyIndex])
-    canvas.renderAll()
-    isRestoring = false
+    try {
+        await canvas.loadFromJSON(history[historyIndex])
+        canvas.renderAll()
+    } finally {
+        isRestoring = false
+    }
 
 }
 
@@ -122,9 +183,12 @@ const redo = async () => {
 
     isRestoring = true
 
-    await canvas.loadFromJSON(history[historyIndex])
-    canvas.renderAll()
-    isRestoring = false
+    try {
+        await canvas.loadFromJSON(history[historyIndex])
+        canvas.renderAll()
+    } finally {
+        isRestoring = false
+    }
 
 }
 
@@ -260,23 +324,6 @@ onMounted(() => {
     }
 
     document.addEventListener('keydown', handleKeydown)
-
-    // =========================
-    // 読み込み
-    // =========================
-    window.loadCanvas = async () => {
-
-        const json = localStorage.getItem('canvas')
-
-        if (!json) return
-
-        isRestoring = true
-
-        await canvas.loadFromJSON(JSON.parse(json))
-        canvas.renderAll()
-        isRestoring = false
-
-    }
 
 })
 

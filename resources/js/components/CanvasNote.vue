@@ -370,13 +370,17 @@ const clearActiveObject = () => {
 }
 
 const deleteObject = () => {
-
-    if (!activeObject.value) return
-
-    canvas.remove(activeObject.value)
+    const active = canvas.getActiveObject()
+    if (!active) return
+    if (active.type === 'activeSelection') {
+        active.forEachObject((obj) => {
+            canvas.remove(obj)
+        })
+    } else {
+        canvas.remove(active)
+    }
     canvas.discardActiveObject()
     canvas.renderAll()
-
     clearActiveObject()
 }
 
@@ -555,6 +559,7 @@ onMounted(() => {
             //   プロパティパネルの削除ボタンなどが効かなくなる）
             if (opt.target) {
                 canvas.setActiveObject(opt.target)
+                updateActiveObject()
                 canvas.renderAll()
                 return
             }
@@ -582,6 +587,7 @@ onMounted(() => {
             // 四角モードと同様、既存オブジェクトの上なら選択状態にする
             if (opt.target) {
                 canvas.setActiveObject(opt.target)
+                updateActiveObject()
                 canvas.renderAll()
                 return
             }

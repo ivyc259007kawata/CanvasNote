@@ -2,61 +2,13 @@
 
     <div class="canvas-page">
 
-        <div class="toolbar">
-            <button @click="currentTool = 'select'" :class="{ active: currentTool === 'select' }">
-                🖱 選択
-            </button>
-
-            <button @click="currentTool = 'rectangle'" :class="{ active: currentTool === 'rectangle' }">
-                ▭ 四角
-            </button>
-
-            <button @click="currentTool = 'text'" :class="{ active: currentTool === 'text' }">
-                📝 テキスト
-            </button>
-
-            <button @click="currentTool = 'pen'" :class="{ active: currentTool === 'pen' }">
-                ✏ ペン
-            </button>
-            <div class="color-picker">
-
-                <button class="color" style="background:#000000" @click="currentColor = '#000000'">
-                </button>
-
-                <button class="color" style="background:#ff0000" @click="currentColor = '#ff0000'">
-                </button>
-
-                <button class="color" style="background:#0066ff" @click="currentColor = '#0066ff'">
-                </button>
-
-                <button class="color" style="background:#00aa00" @click="currentColor = '#00aa00'">
-                </button>
-
-            </div>
-
-            <button @click="openImage">
-                🖼 画像
-            </button>
-
-            <button @click="undo">
-                ↩ Undo
-            </button>
-
-            <button @click="redo">
-                ↪ Redo
-            </button>
-
-            <button @click="openCanvas">
-                📂 開く
-            </button>
-
-            <button @click="openSaveDialog">
-                💾 保存
-            </button>
-        </div>
+        <CanvasToolbar :tool="currentTool" @update:tool="currentTool = $event" @update:color="currentColor = $event"
+            @image="openImage" @undo="undo" @redo="redo" @open="openCanvas" @save="openSaveDialog" />
 
         <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
+
         <input ref="imageInput" type="file" accept="image/*" style="display:none" @change="loadImage" />
+
 
         <!-- 保存形式選択ダイアログ -->
         <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
@@ -131,11 +83,22 @@
 
     </div>
 
+
+
 </template>
 
 <script setup>
+
+import { useHistory } from '@/composables/useHistory'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { Canvas, Rect, IText, PencilBrush, FabricImage } from 'fabric'
+import {
+    Canvas,
+    Rect,
+    IText,
+    PencilBrush,
+    FabricImage,
+    ActiveSelection
+} from 'fabric'
 
 const canvasEl = ref(null)
 const currentTool = ref('select')
@@ -144,8 +107,6 @@ const imageInput = ref(null)
 let canvas = null
 let handleKeydown = null
 let clipboard = null
-const history = []
-let historyIndex = -1
 const currentColor = ref('#000000')
 const fileInput = ref(null)
 const activeObject = ref(null)
@@ -164,10 +125,12 @@ const angle = ref(0)
 // に反応して無駄に saveHistory を呼ばないようにするためのフラグ
 let isSyncingFromObject = false
 
-// Undo/Redo実行中は object:added などのイベントで
-// saveHistory が呼ばれないようにするためのフラグ
-let isRestoring = false
-
+const {
+    saveHistory,
+    undo,
+    redo,
+    isRestoring
+} = useHistory(canvas)
 // =========================
 // 保存（形式選択ダイアログ）
 // =========================
@@ -199,7 +162,7 @@ const downloadBlob = (blob, filename) => {
 
 // .canvas形式（編集可能なJSONデータ）として保存
 const saveAsCanvas = () => {
-    if (!canvas) return
+    if (!canvas.value) return
 
     const json = JSON.stringify(canvas.toJSON())
     const blob = new Blob([json], { type: 'application/json' })
@@ -232,36 +195,7 @@ const saveAsImage = (format) => {
     closeSaveDialog()
 }
 
-// 連続的な変化（ドラッグ中の位置・色のスライダー操作など）で
-// saveHistory が大量に呼ばれても、操作が止まってから一定時間後に
-// 最後の状態だけを1件として記録する（デバウンス）
-let saveHistoryTimer = null
 
-const saveHistory = () => {
-
-    if (isRestoring) return
-    if (!canvas) return
-
-    if (saveHistoryTimer) {
-        clearTimeout(saveHistoryTimer)
-    }
-
-    saveHistoryTimer = setTimeout(() => {
-
-        saveHistoryTimer = null
-
-        const json = JSON.stringify(canvas.toJSON())
-
-        if (history[historyIndex] === json) return
-
-        history.splice(historyIndex + 1)
-
-        history.push(json)
-
-        historyIndex = history.length - 1
-
-    }, 300)
-}
 
 const openCanvas = () => {
     fileInput.value.click()
@@ -288,11 +222,10 @@ const loadCanvasFile = async (event) => {
         return
     }
 
-    isRestoring = true
 
     try {
         await canvas.loadFromJSON(parsed)
-        canvas.renderAll()
+        canvas.requestRenderAll()
     } finally {
         isRestoring = false
     }
@@ -302,39 +235,9 @@ const loadCanvasFile = async (event) => {
     saveHistory()
 }
 
-const undo = async () => {
 
-    if (historyIndex <= 0) return
 
-    historyIndex--
 
-    isRestoring = true
-
-    try {
-        await canvas.loadFromJSON(history[historyIndex])
-        canvas.renderAll()
-    } finally {
-        isRestoring = false
-    }
-
-}
-
-const redo = async () => {
-
-    if (historyIndex >= history.length - 1) return
-
-    historyIndex++
-
-    isRestoring = true
-
-    try {
-        await canvas.loadFromJSON(history[historyIndex])
-        canvas.renderAll()
-    } finally {
-        isRestoring = false
-    }
-
-}
 
 // =========================
 // プロパティパネルの選択オブジェクト同期
@@ -381,13 +284,13 @@ const deleteObject = () => {
     if (!active) return
     if (active.type === 'activeSelection') {
         active.forEachObject((obj) => {
-            canvas.remove(obj)
+            canvas.value.remove(obj)
         })
     } else {
-        canvas.remove(active)
+        canvas.value.remove(active)
     }
     canvas.discardActiveObject()
-    canvas.renderAll()
+    canvas.value.renderAll()
     clearActiveObject()
 }
 
@@ -398,7 +301,7 @@ const bringToFront = () => {
 
     canvas.bringObjectToFront(activeObject.value)
 
-    canvas.renderAll()
+    canvas.value.renderAll()
 
     saveHistory()
 }
@@ -410,7 +313,7 @@ const sendToBack = () => {
 
     canvas.sendObjectToBack(activeObject.value)
 
-    canvas.renderAll()
+    canvas.value.renderAll()
 
     saveHistory()
 }
@@ -420,7 +323,7 @@ watch(fillColor, (color) => {
     if (!activeObject.value) return
 
     activeObject.value.set('fill', color)
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -432,7 +335,7 @@ watch(left, (value) => {
 
     activeObject.value.set('left', value)
     activeObject.value.setCoords()
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -444,7 +347,7 @@ watch(top, (value) => {
 
     activeObject.value.set('top', value)
     activeObject.value.setCoords()
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -458,7 +361,7 @@ watch(objectWidth, (value) => {
 
     activeObject.value.scaleX = value / activeObject.value.width
     activeObject.value.setCoords()
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -471,7 +374,7 @@ watch(objectHeight, (value) => {
 
     activeObject.value.scaleY = value / activeObject.value.height
     activeObject.value.setCoords()
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -483,7 +386,7 @@ watch(angle, (value) => {
 
     activeObject.value.rotate(value)
     activeObject.value.setCoords()
-    canvas.renderAll()
+    canvas.value.renderAll()
     saveHistory()
 }, { flush: 'sync' })
 
@@ -494,34 +397,34 @@ onMounted(() => {
     // =========================
     // Fabric 初期化
     // =========================
-    canvas = new Canvas(canvasEl.value, {
+    canvas.value = new Canvas(canvasEl.value, {
         width: 1000,
         height: 600,
         backgroundColor: '#ffffff',
         selection: true
     })
 
-    canvas.renderAll()
+    canvas.value.renderAll()
 
-    canvas.freeDrawingBrush = new PencilBrush(canvas)
-    canvas.freeDrawingBrush.color = '#000000'
-    canvas.freeDrawingBrush.width = 3
+    canvas.value.freeDrawingBrush= new PencilBrush(canvas)
+    canvas.value.freeDrawingBrush.color = '#000000'
+    canvas.value.freeDrawingBrush.width = 3
 
-    canvas.on('object:added', saveHistory)
-    canvas.on('object:modified', saveHistory)
-    canvas.on('object:removed', saveHistory)
+    canvas.value.on('object:added', saveHistory)
+    canvas.value.on('object:modified', saveHistory)
+    canvas.value.on('object:removed', saveHistory)
 
     // 選択系イベント
-    canvas.on('selection:created', updateActiveObject)
-    canvas.on('selection:updated', updateActiveObject)
-    canvas.on('selection:cleared', clearActiveObject)
+    canvas.value.on('selection:created', updateActiveObject)
+    canvas.value.on('selection:updated', updateActiveObject)
+    canvas.value.on('selection:cleared', clearActiveObject)
 
     // キャンバス上で直接操作した場合も
     // パネルの表示を最新に同期する
-    canvas.on('object:moving', (e) => syncPanelFromObject(e.target))
-    canvas.on('object:scaling', (e) => syncPanelFromObject(e.target))
-    canvas.on('object:rotating', (e) => syncPanelFromObject(e.target))
-    canvas.on('object:modified', (e) => syncPanelFromObject(e.target))
+    canvas.value.on('object:moving', (e) => syncPanelFromObject(e.target))
+    canvas.value.on('object:scaling', (e) => syncPanelFromObject(e.target))
+    canvas.value.on('object:rotating', (e) => syncPanelFromObject(e.target))
+    canvas.value.on('object:modified', (e) => syncPanelFromObject(e.target))
 
 
 
@@ -529,7 +432,7 @@ onMounted(() => {
     // =========================
     // 初期オブジェクト
     // =========================
-    canvas.add(
+    canvas.value.add(
         new Rect({
             left: 100,
             top: 100,
@@ -567,7 +470,7 @@ onMounted(() => {
             if (opt.target) {
                 canvas.setActiveObject(opt.target)
                 updateActiveObject()
-                canvas.renderAll()
+                canvas.value.renderAll()
                 return
             }
 
@@ -583,7 +486,7 @@ onMounted(() => {
 
             canvas.add(rect)
             canvas.setActiveObject(rect)
-            canvas.renderAll()
+            canvas.value.renderAll()
 
             return
         }
@@ -595,7 +498,7 @@ onMounted(() => {
             if (opt.target) {
                 canvas.setActiveObject(opt.target)
                 updateActiveObject()
-                canvas.renderAll()
+                canvas.value.renderAll()
                 return
             }
 
@@ -610,7 +513,7 @@ onMounted(() => {
 
             canvas.add(text)
             canvas.setActiveObject(text)
-            canvas.renderAll()
+            canvas.value.renderAll()
 
             return
         }
@@ -625,14 +528,15 @@ onMounted(() => {
         // Ctrl+C
         if (e.ctrlKey && e.key.toLowerCase() === 'c') {
 
-            const active = canvas.getActiveObject()
+            const activeObject = canvas.getActiveObject()
 
-            if (!active) return
+            if (!activeObject) return
 
-            active.clone().then((cloned) => {
+            activeObject.clone().then((cloned) => {
                 clipboard = cloned
             })
 
+            e.preventDefault()
             return
         }
 
@@ -645,22 +549,46 @@ onMounted(() => {
 
                 canvas.discardActiveObject()
 
-                clonedObj.set({
-                    left: clonedObj.left + 20,
-                    top: clonedObj.top + 20
-                })
+                if (clonedObj.type === 'activeSelection') {
 
-                canvas.add(clonedObj)
-                canvas.setActiveObject(clonedObj)
+                    clonedObj.canvas = canvas
+
+                    clonedObj.forEachObject((obj) => {
+                        canvas.add(obj)
+                    })
+
+                    clonedObj.set({
+                        left: (clonedObj.left || 0) + 20,
+                        top: (clonedObj.top || 0) + 20
+                    })
+
+                    const selection = new ActiveSelection(
+                        clonedObj.getObjects(),
+                        { canvas }
+                    )
+
+                    canvas.setActiveObject(selection)
+
+                } else {
+
+                    clonedObj.set({
+                        left: (clonedObj.left || 0) + 20,
+                        top: (clonedObj.top || 0) + 20
+                    })
+
+                    canvas.add(clonedObj)
+                    canvas.setActiveObject(clonedObj)
+                }
+
+                canvas.value.requestRenderAll()
+
+                saveHistory()
 
                 clipboard = clonedObj
 
-                canvas.renderAll()
-
-                updateActiveObject()
-                saveHistory()
             })
 
+            e.preventDefault()
             return
         }
 
@@ -673,17 +601,17 @@ onMounted(() => {
         if (active.type === 'activeSelection') {
 
             active.forEachObject((obj) => {
-                canvas.remove(obj)
+                canvas.value.remove(obj)
             })
 
         } else {
 
-            canvas.remove(active)
+            canvas.value.remove(active)
 
         }
 
         canvas.discardActiveObject()
-        canvas.renderAll()
+        canvas.value.renderAll()
 
     }
 
@@ -724,10 +652,10 @@ const loadImage = async (event) => {
         }
 
         canvas.add(img)
-        saveHistory()
         canvas.setActiveObject(img)
         updateActiveObject()
-        canvas.renderAll()
+        canvas.value.requestRenderAll()
+        saveHistory()
     }
 
     reader.readAsDataURL(file)
@@ -740,7 +668,7 @@ watch(currentTool, (tool) => {
     if (!canvas) return
     if (tool === 'pen') {
         canvas.isDrawingMode = true
-        canvas.freeDrawingBrush.color = currentColor.value
+        canvas.value.freeDrawingBrush.color = currentColor.value
     } else {
         canvas.isDrawingMode = false
     }
@@ -752,8 +680,8 @@ watch(currentTool, (tool) => {
 
 watch(currentColor, (color) => {
     if (!canvas) return
-    if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.color = color
+    if (canvas.value.freeDrawingBrush) {
+        canvas.value.freeDrawingBrush.color = color
     }
 
 })
@@ -767,8 +695,8 @@ onUnmounted(() => {
         document.removeEventListener('keydown', handleKeydown)
     }
 
-    if (canvas) {
-        canvas.dispose()
+    if (canvas.value) {
+        canvas.value.dispose()
         canvas = null
     }
 

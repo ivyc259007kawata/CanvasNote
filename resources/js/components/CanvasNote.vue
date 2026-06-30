@@ -34,6 +34,10 @@
 
             </div>
 
+            <button @click="openImage">
+                🖼 画像
+            </button>
+
             <button @click="undo">
                 ↩ Undo
             </button>
@@ -52,6 +56,7 @@
         </div>
 
         <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
+        <input ref="imageInput" type="file" accept="image/*" style="display:none" @change="loadImage" />
 
         <!-- 保存形式選択ダイアログ -->
         <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
@@ -130,13 +135,15 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { Canvas, Rect, IText, PencilBrush } from 'fabric'
+import { Canvas, Rect, IText, PencilBrush, FabricImage } from 'fabric'
 
 const canvasEl = ref(null)
 const currentTool = ref('select')
+const imageInput = ref(null)
 
 let canvas = null
 let handleKeydown = null
+let clipboard = null
 const history = []
 let historyIndex = -1
 const currentColor = ref('#000000')
@@ -615,6 +622,48 @@ onMounted(() => {
     // =========================
     handleKeydown = (e) => {
 
+        // Ctrl+C
+        if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+
+            const active = canvas.getActiveObject()
+
+            if (!active) return
+
+            active.clone().then((cloned) => {
+                clipboard = cloned
+            })
+
+            return
+        }
+
+        // Ctrl+V
+        if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+
+            if (!clipboard) return
+
+            clipboard.clone().then((clonedObj) => {
+
+                canvas.discardActiveObject()
+
+                clonedObj.set({
+                    left: clonedObj.left + 20,
+                    top: clonedObj.top + 20
+                })
+
+                canvas.add(clonedObj)
+                canvas.setActiveObject(clonedObj)
+
+                clipboard = clonedObj
+
+                canvas.renderAll()
+
+                updateActiveObject()
+                saveHistory()
+            })
+
+            return
+        }
+
         if (e.key !== 'Delete' && e.key !== 'Backspace') return
 
         const active = canvas.getActiveObject()
@@ -641,6 +690,48 @@ onMounted(() => {
     document.addEventListener('keydown', handleKeydown)
 
 })
+// =========================
+// 画像読み込み
+// =========================
+const openImage = () => {
+    imageInput.value.click()
+}
+const loadImage = async (event) => {
+
+    const file = event.target.files[0]
+
+    // 同じ画像を連続で選択できるようにする
+    event.target.value = ''
+
+    if (!file) return
+
+    const reader = new FileReader()
+
+    reader.onload = async () => {
+
+        const img = await FabricImage.fromURL(reader.result)
+
+        img.set({
+            left: 100,
+            top: 100
+        })
+
+        // 大きすぎる画像は縮小
+        const maxWidth = 400
+
+        if (img.width > maxWidth) {
+            img.scale(maxWidth / img.width)
+        }
+
+        canvas.add(img)
+        saveHistory()
+        canvas.setActiveObject(img)
+        updateActiveObject()
+        canvas.renderAll()
+    }
+
+    reader.readAsDataURL(file)
+}
 
 // =========================
 // ツール切替

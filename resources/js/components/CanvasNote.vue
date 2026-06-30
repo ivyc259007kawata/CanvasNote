@@ -46,12 +46,36 @@
                 📂 開く
             </button>
 
-            <button @click="saveCanvas">
+            <button @click="openSaveDialog">
                 💾 保存
             </button>
         </div>
 
         <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
+
+        <!-- 保存形式選択ダイアログ -->
+        <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
+            <div class="dialog-box">
+                <h3>保存形式を選択</h3>
+
+                <button class="dialog-option" @click="saveAsCanvas">
+                    <span class="dialog-option-title">.canvas</span>
+                    <span class="dialog-option-desc">編集可能なデータとして保存（あとで開いて編集できます）</span>
+                </button>
+
+                <button class="dialog-option" @click="saveAsImage('png')">
+                    <span class="dialog-option-title">.png</span>
+                    <span class="dialog-option-desc">画像として保存（背景を透過できます）</span>
+                </button>
+
+                <button class="dialog-option" @click="saveAsImage('jpeg')">
+                    <span class="dialog-option-title">.jpg</span>
+                    <span class="dialog-option-desc">画像として保存（ファイルサイズが小さめ）</span>
+                </button>
+
+                <button class="dialog-cancel" @click="closeSaveDialog">キャンセル</button>
+            </div>
+        </div>
 
         <!-- キャンバス本体とプロパティパネルを横並びに -->
         <div class="layout">
@@ -72,17 +96,24 @@
                     <label>Y</label>
                     <input type="number" v-model.number="top" />
 
-                    <button @click="deleteObject">削除</button>
+                    <label>幅</label>
+                    <input type="number" v-model.number="objectWidth" />
 
-                    <button @click="bringToFront">
+                    <label>高さ</label>
+                    <input type="number" v-model.number="objectHeight" />
+
+                    <label>回転</label>
+                    <input type="number" v-model.number="angle" />
+
+                    <button class="layer-button" @click="bringToFront">
                         ⬆ 最前面へ
                     </button>
 
-                    <button @click="sendToBack">
+                    <button class="layer-button" @click="sendToBack">
                         ⬇ 最背面へ
                     </button>
 
-                    <button @click="deleteObject">
+                    <button class="delete-button" @click="deleteObject">
                         🗑 削除
                     </button>
                 </div>
@@ -118,6 +149,9 @@ const activeObject = ref(null)
 const fillColor = ref('#000000')
 const left = ref(0)
 const top = ref(0)
+const objectWidth = ref(0)
+const objectHeight = ref(0)
+const angle = ref(0)
 
 // fillColor/left/top の watch がプログラム的な代入（選択切替時の初期化）
 // に反応して無駄に saveHistory を呼ばないようにするためのフラグ
@@ -128,22 +162,67 @@ let isSyncingFromObject = false
 let isRestoring = false
 
 // =========================
-// 保存
+// 保存（形式選択ダイアログ）
 // =========================
-const saveCanvas = () => {
-    if (!canvas) return
+const showSaveDialog = ref(false)
 
-    const json = JSON.stringify(canvas.toJSON())
+const openSaveDialog = () => {
+    showSaveDialog.value = true
+}
 
-    const blob = new Blob([json], { type: 'application/json' })
+const closeSaveDialog = () => {
+    showSaveDialog.value = false
+}
+
+// ファイル名のベース部分（拡張子なし）。
+// 将来DB保存に切り替える際は、ここを教材タイトル等に差し替える想定
+const FILE_BASE_NAME = 'CanvasNote'
+
+// 共通：Blobをダウンロードさせるヘルパー
+const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob)
 
     const a = document.createElement('a')
     a.href = url
-    a.download = 'CanvasNote.canvas'
+    a.download = filename
     a.click()
 
     URL.revokeObjectURL(url)
+}
+
+// .canvas形式（編集可能なJSONデータ）として保存
+const saveAsCanvas = () => {
+    if (!canvas) return
+
+    const json = JSON.stringify(canvas.toJSON())
+    const blob = new Blob([json], { type: 'application/json' })
+
+    downloadBlob(blob, `${FILE_BASE_NAME}.canvas`)
+
+    closeSaveDialog()
+}
+
+// .png / .jpg として画像書き出し
+const saveAsImage = (format) => {
+    if (!canvas) return
+
+    // jpeg は透過をサポートしないため、背景色を明示しておく
+    // （Canvas自体の backgroundColor が white 設定なので通常は問題ないが、念のため）
+    const dataUrl = canvas.toDataURL({
+        format,           // 'png' または 'jpeg'
+        quality: 1,       // jpeg時の画質（0〜1）。pngでは無視される
+        multiplier: 1     // 解像度倍率。高解像度で書き出したい場合はここを2などにする
+    })
+
+    // dataURL を Blob に変換してダウンロード
+    fetch(dataUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+            const ext = format === 'jpeg' ? 'jpg' : 'png'
+            downloadBlob(blob, `${FILE_BASE_NAME}.${ext}`)
+        })
+
+    closeSaveDialog()
 }
 
 // 連続的な変化（ドラッグ中の位置・色のスライダー操作など）で
@@ -267,6 +346,9 @@ const syncPanelFromObject = (obj = activeObject.value) => {
     fillColor.value = obj.fill || '#000000'
     left.value = Math.round(obj.left)
     top.value = Math.round(obj.top)
+    objectWidth.value = Math.round(obj.getScaledWidth())
+    objectHeight.value = Math.round(obj.getScaledHeight())
+    angle.value = Math.round(obj.angle || 0)
 
     isSyncingFromObject = false
 }
@@ -282,6 +364,9 @@ const clearActiveObject = () => {
     fillColor.value = '#000000'
     left.value = 0
     top.value = 0
+    objectWidth.value = 0
+    objectHeight.value = 0
+    angle.value = 0
 }
 
 const deleteObject = () => {
@@ -295,11 +380,24 @@ const deleteObject = () => {
     clearActiveObject()
 }
 
+//最前面
 const bringToFront = () => {
 
     if (!activeObject.value) return
 
     canvas.bringObjectToFront(activeObject.value)
+
+    canvas.renderAll()
+
+    saveHistory()
+}
+
+//最背面
+const sendToBack = () => {
+
+    if (!activeObject.value) return
+
+    canvas.sendObjectToBack(activeObject.value)
 
     canvas.renderAll()
 
@@ -334,6 +432,45 @@ watch(top, (value) => {
     if (Number.isNaN(value)) return
 
     activeObject.value.set('top', value)
+    activeObject.value.setCoords()
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
+
+// 幅が変更されたら、scaleXを再計算してFabricオブジェクトに反映
+// getScaledWidth()で表示しているため、書き戻しもスケール経由で行う
+watch(objectWidth, (value) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+    if (Number.isNaN(value)) return
+    if (!activeObject.value.width) return  // 0除算防止
+
+    activeObject.value.scaleX = value / activeObject.value.width
+    activeObject.value.setCoords()
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
+
+// 高さが変更されたら、scaleYを再計算してFabricオブジェクトに反映
+watch(objectHeight, (value) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+    if (Number.isNaN(value)) return
+    if (!activeObject.value.height) return  // 0除算防止
+
+    activeObject.value.scaleY = value / activeObject.value.height
+    activeObject.value.setCoords()
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
+
+// 回転角度が変更されたら、Fabricオブジェクトに反映
+watch(angle, (value) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+    if (Number.isNaN(value)) return
+
+    activeObject.value.rotate(value)
     activeObject.value.setCoords()
     canvas.renderAll()
     saveHistory()
@@ -411,7 +548,16 @@ onMounted(() => {
         // 四角モード
         if (currentTool.value === 'rectangle') {
 
-            if (opt.target) return
+            // 既存オブジェクトの上をクリックした場合は新規作成せず、
+            // そのオブジェクトを選択状態にする
+            // （これがないと、四角ツールがアクティブなまま既存オブジェクトを
+            //   クリックしても activeObject が更新されず、
+            //   プロパティパネルの削除ボタンなどが効かなくなる）
+            if (opt.target) {
+                canvas.setActiveObject(opt.target)
+                canvas.renderAll()
+                return
+            }
 
             const pointer = canvas.getScenePoint(opt.e)
 
@@ -433,7 +579,12 @@ onMounted(() => {
         // テキストモード
         if (currentTool.value === 'text') {
 
-            if (opt.target) return
+            // 四角モードと同様、既存オブジェクトの上なら選択状態にする
+            if (opt.target) {
+                canvas.setActiveObject(opt.target)
+                canvas.renderAll()
+                return
+            }
 
             const pointer = canvas.getScenePoint(opt.e)
 
@@ -621,16 +772,115 @@ canvas {
 }
 
 .property-panel button {
-    margin-top: 12px;
-    padding: 8px 12px;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px 12px;
     border: none;
     border-radius: 6px;
-    background: #e53935;
     color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+/* レイヤーボタン */
+.layer-button {
+    background: #3b82f6;
+}
+
+.layer-button:hover {
+    background: #2563eb;
+}
+
+/* 削除ボタン */
+.delete-button {
+    background: #e53935;
+}
+
+.delete-button:hover {
+    background: #c62828;
+}
+
+/* 保存形式選択ダイアログ */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    background: rgba(0, 0, 0, 0.4);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    z-index: 1000;
+}
+
+.dialog-box {
+    width: 320px;
+    padding: 24px;
+
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dialog-box h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+}
+
+.dialog-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+
+    padding: 12px 14px;
+
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+
+    cursor: pointer;
+    text-align: left;
+}
+
+.dialog-option:hover {
+    background: #eef6ff;
+    border-color: #93c5fd;
+}
+
+.dialog-option-title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #1d4ed8;
+}
+
+.dialog-option-desc {
+    font-size: 12px;
+    color: #666;
+}
+
+.dialog-cancel {
+    margin-top: 8px;
+    padding: 10px;
+
+    border: none;
+    border-radius: 8px;
+    background: #eee;
+    color: #333;
+
     cursor: pointer;
 }
 
-.property-panel button:hover {
-    background: #c62828;
+.dialog-cancel:hover {
+    background: #ddd;
 }
 </style>

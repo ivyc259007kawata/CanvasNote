@@ -51,37 +51,48 @@
             </button>
         </div>
 
-        <canvas ref="canvasEl" width="1000" height="600">
-        </canvas>
-
         <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
 
-    </div>
-    <div class="layout">
-        <canvas ref="canvasEl" width="1000" height="600"></canvas>
+        <!-- キャンバス本体とプロパティパネルを横並びに -->
+        <div class="layout">
+            <canvas ref="canvasEl" width="1000" height="600"></canvas>
 
-        <div class="property-panel">
-            <h3>プロパティ</h3>
+            <div class="property-panel">
+                <h3>プロパティ</h3>
 
-            <div v-if="activeObject">
-                <p>タイプ: {{ activeObject.type }}</p>
+                <div v-if="activeObject">
+                    <p>タイプ: {{ activeObject.type }}</p>
 
-                <label>色</label>
-                <input type="color" v-model="fillColor" />
+                    <label>色</label>
+                    <input type="color" v-model="fillColor" />
 
-                <label>X</label>
-                <input type="number" v-model="left" />
+                    <label>X</label>
+                    <input type="number" v-model.number="left" />
 
-                <label>Y</label>
-                <input type="number" v-model="top" />
+                    <label>Y</label>
+                    <input type="number" v-model.number="top" />
 
-                <button @click="deleteObject">削除</button>
-            </div>
+                    <button @click="deleteObject">削除</button>
 
-            <div v-else>
-                未選択
+                    <button @click="bringToFront">
+                        ⬆ 最前面へ
+                    </button>
+
+                    <button @click="sendToBack">
+                        ⬇ 最背面へ
+                    </button>
+
+                    <button @click="deleteObject">
+                        🗑 削除
+                    </button>
+                </div>
+
+                <div v-else>
+                    未選択
+                </div>
             </div>
         </div>
+
     </div>
 
 </template>
@@ -100,6 +111,17 @@ let historyIndex = -1
 const currentColor = ref('#000000')
 const fileInput = ref(null)
 const activeObject = ref(null)
+
+// プロパティパネル用の値
+// activeObjectが切り替わったタイミングで、選択中オブジェクトの
+// 現在値で初期化し、入力されたらFabricオブジェクト側へ書き戻す
+const fillColor = ref('#000000')
+const left = ref(0)
+const top = ref(0)
+
+// fillColor/left/top の watch がプログラム的な代入（選択切替時の初期化）
+// に反応して無駄に saveHistory を呼ばないようにするためのフラグ
+let isSyncingFromObject = false
 
 // Undo/Redo実行中は object:added などのイベントで
 // saveHistory が呼ばれないようにするためのフラグ
@@ -124,20 +146,35 @@ const saveCanvas = () => {
     URL.revokeObjectURL(url)
 }
 
+// 連続的な変化（ドラッグ中の位置・色のスライダー操作など）で
+// saveHistory が大量に呼ばれても、操作が止まってから一定時間後に
+// 最後の状態だけを1件として記録する（デバウンス）
+let saveHistoryTimer = null
+
 const saveHistory = () => {
 
     if (isRestoring) return
     if (!canvas) return
 
-    const json = JSON.stringify(canvas.toJSON())
+    if (saveHistoryTimer) {
+        clearTimeout(saveHistoryTimer)
+    }
 
-    if (history[historyIndex] === json) return
+    saveHistoryTimer = setTimeout(() => {
 
-    history.splice(historyIndex + 1)
+        saveHistoryTimer = null
 
-    history.push(json)
+        const json = JSON.stringify(canvas.toJSON())
 
-    historyIndex = history.length - 1
+        if (history[historyIndex] === json) return
+
+        history.splice(historyIndex + 1)
+
+        history.push(json)
+
+        historyIndex = history.length - 1
+
+    }, 300)
 }
 
 const openCanvas = () => {
@@ -213,13 +250,94 @@ const redo = async () => {
 
 }
 
+// =========================
+// プロパティパネルの選択オブジェクト同期
+// =========================
+
+// 選択中オブジェクトが変わったら、パネルの入力欄を
+// そのオブジェクトの現在値で初期化する。
+// 引数を渡さない場合は activeObject.value を対象にする
+// （選択変更イベントなど、targetを直接持たない呼び出し元のため）
+const syncPanelFromObject = (obj = activeObject.value) => {
+
+    if (!obj) return
+
+    isSyncingFromObject = true
+
+    fillColor.value = obj.fill || '#000000'
+    left.value = Math.round(obj.left)
+    top.value = Math.round(obj.top)
+
+    isSyncingFromObject = false
+}
+
 const updateActiveObject = () => {
     activeObject.value = canvas.getActiveObject()
+    syncPanelFromObject()
 }
 
 const clearActiveObject = () => {
     activeObject.value = null
+
+    fillColor.value = '#000000'
+    left.value = 0
+    top.value = 0
 }
+
+const deleteObject = () => {
+
+    if (!activeObject.value) return
+
+    canvas.remove(activeObject.value)
+    canvas.discardActiveObject()
+    canvas.renderAll()
+
+    clearActiveObject()
+}
+
+const bringToFront = () => {
+
+    if (!activeObject.value) return
+
+    canvas.bringObjectToFront(activeObject.value)
+
+    canvas.renderAll()
+
+    saveHistory()
+}
+
+watch(fillColor, (color) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+
+    activeObject.value.set('fill', color)
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
+
+// X座標が変更されたら、Fabricオブジェクトに反映
+watch(left, (value) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+    if (Number.isNaN(value)) return
+
+    activeObject.value.set('left', value)
+    activeObject.value.setCoords()
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
+
+// Y座標が変更されたら、Fabricオブジェクトに反映
+watch(top, (value) => {
+    if (isSyncingFromObject) return
+    if (!activeObject.value) return
+    if (Number.isNaN(value)) return
+
+    activeObject.value.set('top', value)
+    activeObject.value.setCoords()
+    canvas.renderAll()
+    saveHistory()
+}, { flush: 'sync' })
 
 onMounted(() => {
 
@@ -249,6 +367,13 @@ onMounted(() => {
     canvas.on('selection:created', updateActiveObject)
     canvas.on('selection:updated', updateActiveObject)
     canvas.on('selection:cleared', clearActiveObject)
+
+    // キャンバス上で直接操作した場合も
+    // パネルの表示を最新に同期する
+    canvas.on('object:moving', (e) => syncPanelFromObject(e.target))
+    canvas.on('object:scaling', (e) => syncPanelFromObject(e.target))
+    canvas.on('object:rotating', (e) => syncPanelFromObject(e.target))
+    canvas.on('object:modified', (e) => syncPanelFromObject(e.target))
 
 
 
@@ -447,9 +572,65 @@ onUnmounted(() => {
     cursor: pointer;
 }
 
+/* レイアウト：キャンバスとプロパティパネルを横並びに */
+.layout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
 
 canvas {
     border: 1px solid #ccc;
     background: white;
+}
+
+.property-panel {
+    width: 220px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.property-panel h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.property-panel label {
+    font-size: 13px;
+    color: #555;
+    margin-top: 6px;
+}
+
+.property-panel input[type="number"] {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.property-panel input[type="color"] {
+    width: 100%;
+    height: 32px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.property-panel button {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #e53935;
+    color: white;
+    cursor: pointer;
+}
+
+.property-panel button:hover {
+    background: #c62828;
 }
 </style>

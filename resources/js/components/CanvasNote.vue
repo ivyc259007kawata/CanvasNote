@@ -1,705 +1,162 @@
 <template>
+  <div class="canvas-page">
 
-    <div class="canvas-page">
+    <CanvasToolbar
+      :tool="state.tool"
+      @update:tool="state.tool = $event"
+      @update:color="state.color = $event"
+      @image="image.openImage"
+      @undo="history.undo"
+      @redo="history.redo"
+      @open="openCanvas"
+      @save="openSaveDialog"
+    />
 
-        <CanvasToolbar :tool="currentTool" @update:tool="currentTool = $event" @update:color="currentColor = $event"
-            @image="openImage" @undo="undo" @redo="redo" @open="openCanvas" @save="openSaveDialog" />
+    <input ref="fileInput" type="file" accept=".canvas,.json" hidden @change="loadCanvasFile" />
+    <input ref="imageInput" type="file" accept="image/*" hidden />
 
-        <input ref="fileInput" type="file" accept=".canvas,.json" style="display:none" @change="loadCanvasFile" />
+    <!-- 保存ダイアログ -->
+    <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
+      <div class="dialog-box">
+        <h3>保存形式を選択</h3>
 
-        <input ref="imageInput" type="file" accept="image/*" style="display:none" @change="loadImage" />
+        <button @click="save.saveAsCanvas()">.canvas</button>
+        <button @click="save.saveAsImage('png')">.png</button>
+        <button @click="save.saveAsImage('jpeg')">.jpg</button>
 
-
-        <!-- 保存形式選択ダイアログ -->
-        <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
-            <div class="dialog-box">
-                <h3>保存形式を選択</h3>
-
-                <button class="dialog-option" @click="saveAsCanvas">
-                    <span class="dialog-option-title">.canvas</span>
-                    <span class="dialog-option-desc">編集可能なデータとして保存（あとで開いて編集できます）</span>
-                </button>
-
-                <button class="dialog-option" @click="saveAsImage('png')">
-                    <span class="dialog-option-title">.png</span>
-                    <span class="dialog-option-desc">画像として保存（背景を透過できます）</span>
-                </button>
-
-                <button class="dialog-option" @click="saveAsImage('jpeg')">
-                    <span class="dialog-option-title">.jpg</span>
-                    <span class="dialog-option-desc">画像として保存（ファイルサイズが小さめ）</span>
-                </button>
-
-                <button class="dialog-cancel" @click="closeSaveDialog">キャンセル</button>
-            </div>
-        </div>
-
-        <!-- キャンバス本体とプロパティパネルを横並びに -->
-        <div class="layout">
-            <canvas ref="canvasEl" width="1000" height="600"></canvas>
-
-            <div class="property-panel">
-                <h3>プロパティ</h3>
-
-                <div v-if="activeObject">
-                    <p>タイプ: {{ activeObject.type }}</p>
-
-                    <label>色</label>
-                    <input type="color" v-model="fillColor" />
-
-                    <label>X</label>
-                    <input type="number" v-model.number="left" />
-
-                    <label>Y</label>
-                    <input type="number" v-model.number="top" />
-
-                    <label>幅</label>
-                    <input type="number" v-model.number="objectWidth" />
-
-                    <label>高さ</label>
-                    <input type="number" v-model.number="objectHeight" />
-
-                    <label>回転</label>
-                    <input type="number" v-model.number="angle" />
-
-                    <button class="layer-button" @click="bringToFront">
-                        ⬆ 最前面へ
-                    </button>
-
-                    <button class="layer-button" @click="sendToBack">
-                        ⬇ 最背面へ
-                    </button>
-
-                    <button class="delete-button" @click="deleteObject">
-                        🗑 削除
-                    </button>
-                </div>
-
-                <div v-else>
-                    未選択
-                </div>
-            </div>
-        </div>
-
+        <button @click="closeSaveDialog">キャンセル</button>
+      </div>
     </div>
 
+    <div class="layout">
+      <canvas ref="canvasEl" width="1000" height="600"></canvas>
 
+      <div class="property-panel">
+        <h3>プロパティ</h3>
 
+        <div v-if="panel.activeObject">
+          <p>タイプ: {{ panel.activeObject.type }}</p>
+
+          <label>色</label>
+          <input type="color" v-model="panel.fillColor" />
+
+          <label>X</label>
+          <input type="number" v-model.number="panel.left" />
+
+          <label>Y</label>
+          <input type="number" v-model.number="panel.top" />
+
+          <label>幅</label>
+          <input type="number" v-model.number="panel.objectWidth" />
+
+          <label>高さ</label>
+          <input type="number" v-model.number="panel.objectHeight" />
+
+          <label>回転</label>
+          <input type="number" v-model.number="panel.angle" />
+
+          <button @click="panel.bringToFront()">⬆ 最前面</button>
+          <button @click="panel.sendToBack()">⬇ 最背面</button>
+          <button @click="panel.deleteObject()">🗑 削除</button>
+        </div>
+
+        <div v-else>未選択</div>
+      </div>
+    </div>
+
+  </div>
 </template>
 
 <script setup>
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 
+import CanvasToolbar from './CanvasToolbar.vue'
+
+import { useCanvas } from '@/composables/useCanvas'
 import { useHistory } from '@/composables/useHistory'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import {
-    Canvas,
-    Rect,
-    IText,
-    PencilBrush,
-    FabricImage,
-    ActiveSelection
-} from 'fabric'
+import { usePropertyPanel } from '@/composables/usePropertyPanel'
+import { useCanvasEvents } from '@/composables/useCanvasEvents'
+import { useKeyboard } from '@/composables/useKeyboard'
+import { useClipboard } from '@/composables/useClipboard'
+import { useImage } from '@/composables/useImage'
+import { useSaveLoad } from '@/composables/useSaveLoad'
 
+/* =========================
+  refs
+========================= */
 const canvasEl = ref(null)
-const currentTool = ref('select')
+const fileInput = ref(null)
 const imageInput = ref(null)
 
-let canvas = null
-let handleKeydown = null
-let clipboard = null
-const currentColor = ref('#000000')
-const fileInput = ref(null)
-const activeObject = ref(null)
+/* =========================
+  core canvas
+========================= */
+const canvas = useCanvas(canvasEl)
 
-// プロパティパネル用の値
-// activeObjectが切り替わったタイミングで、選択中オブジェクトの
-// 現在値で初期化し、入力されたらFabricオブジェクト側へ書き戻す
-const fillColor = ref('#000000')
-const left = ref(0)
-const top = ref(0)
-const objectWidth = ref(0)
-const objectHeight = ref(0)
-const angle = ref(0)
+/* =========================
+  UI state
+========================= */
+const state = reactive({
+  tool: 'select',
+  color: '#000000'
+})
 
-// fillColor/left/top の watch がプログラム的な代入（選択切替時の初期化）
-// に反応して無駄に saveHistory を呼ばないようにするためのフラグ
-let isSyncingFromObject = false
+/* =========================
+  composables
+========================= */
+const history = useHistory(canvas)
+const panel = usePropertyPanel(canvas, history.saveHistory)
+const clipboard = useClipboard(canvas, history.saveHistory)
+const image = useImage(canvas, imageInput, history.saveHistory)
+const save = useSaveLoad(canvas)
+const events = useCanvasEvents(canvas, state, panel, history.saveHistory)
+const keyboard = useKeyboard(canvas, history.saveHistory, clipboard)
 
-const {
-    saveHistory,
-    undo,
-    redo,
-    isRestoring
-} = useHistory(canvas)
-// =========================
-// 保存（形式選択ダイアログ）
-// =========================
+/* =========================
+  dialog
+========================= */
 const showSaveDialog = ref(false)
 
-const openSaveDialog = () => {
-    showSaveDialog.value = true
+const openSaveDialog = () => (showSaveDialog.value = true)
+const closeSaveDialog = () => (showSaveDialog.value = false)
+
+/* =========================
+  file operations
+========================= */
+const openCanvas = () => fileInput.value?.click()
+
+const loadCanvasFile = async (e) => {
+  const file = e.target.files[0]
+  e.target.value = ''
+  if (!file) return
+
+  const text = await file.text()
+  const json = JSON.parse(text)
+
+  await canvas.value.loadFromJSON(json)
+  canvas.value.requestRenderAll()
+
+  history.saveHistory()
 }
 
-const closeSaveDialog = () => {
-    showSaveDialog.value = false
-}
-
-// ファイル名のベース部分（拡張子なし）。
-// 将来DB保存に切り替える際は、ここを教材タイトル等に差し替える想定
-const FILE_BASE_NAME = 'CanvasNote'
-
-// 共通：Blobをダウンロードさせるヘルパー
-const downloadBlob = (blob, filename) => {
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-
-    URL.revokeObjectURL(url)
-}
-
-// .canvas形式（編集可能なJSONデータ）として保存
-const saveAsCanvas = () => {
-    if (!canvas.value) return
-
-    const json = JSON.stringify(canvas.toJSON())
-    const blob = new Blob([json], { type: 'application/json' })
-
-    downloadBlob(blob, `${FILE_BASE_NAME}.canvas`)
-
-    closeSaveDialog()
-}
-
-// .png / .jpg として画像書き出し
-const saveAsImage = (format) => {
-    if (!canvas) return
-
-    // jpeg は透過をサポートしないため、背景色を明示しておく
-    // （Canvas自体の backgroundColor が white 設定なので通常は問題ないが、念のため）
-    const dataUrl = canvas.toDataURL({
-        format,           // 'png' または 'jpeg'
-        quality: 1,       // jpeg時の画質（0〜1）。pngでは無視される
-        multiplier: 1     // 解像度倍率。高解像度で書き出したい場合はここを2などにする
-    })
-
-    // dataURL を Blob に変換してダウンロード
-    fetch(dataUrl)
-        .then((res) => res.blob())
-        .then((blob) => {
-            const ext = format === 'jpeg' ? 'jpg' : 'png'
-            downloadBlob(blob, `${FILE_BASE_NAME}.${ext}`)
-        })
-
-    closeSaveDialog()
-}
-
-
-
-const openCanvas = () => {
-    fileInput.value.click()
-}
-
-const loadCanvasFile = async (event) => {
-
-    const file = event.target.files[0]
-
-    // 同じファイルを連続で選んでも change が発火するようにリセット
-    // （input.value をクリアしておかないと2回目の選択が無視される）
-    event.target.value = ''
-
-    if (!file) return
-
-    let parsed
-
-    try {
-        const text = await file.text()
-        parsed = JSON.parse(text)
-    } catch (err) {
-        console.error('ファイルの読み込みに失敗しました', err)
-        alert('このファイルは読み込めませんでした。.canvas または .json 形式のファイルを選んでください。')
-        return
-    }
-
-
-    try {
-        await canvas.loadFromJSON(parsed)
-        canvas.requestRenderAll()
-    } finally {
-        isRestoring = false
-    }
-
-    // 開く操作自体もUndoで戻れるようにする
-    // （間違えて別ファイルを開いてしまった場合に備える）
-    saveHistory()
-}
-
-
-
-
-
-// =========================
-// プロパティパネルの選択オブジェクト同期
-// =========================
-
-// 選択中オブジェクトが変わったら、パネルの入力欄を
-// そのオブジェクトの現在値で初期化する。
-// 引数を渡さない場合は activeObject.value を対象にする
-// （選択変更イベントなど、targetを直接持たない呼び出し元のため）
-const syncPanelFromObject = (obj = activeObject.value) => {
-
-    if (!obj) return
-
-    isSyncingFromObject = true
-
-    fillColor.value = obj.fill || '#000000'
-    left.value = Math.round(obj.left)
-    top.value = Math.round(obj.top)
-    objectWidth.value = Math.round(obj.getScaledWidth())
-    objectHeight.value = Math.round(obj.getScaledHeight())
-    angle.value = Math.round(obj.angle || 0)
-
-    isSyncingFromObject = false
-}
-
-const updateActiveObject = () => {
-    activeObject.value = canvas.getActiveObject()
-    syncPanelFromObject()
-}
-
-const clearActiveObject = () => {
-    activeObject.value = null
-
-    fillColor.value = '#000000'
-    left.value = 0
-    top.value = 0
-    objectWidth.value = 0
-    objectHeight.value = 0
-    angle.value = 0
-}
-
-const deleteObject = () => {
-    const active = canvas.getActiveObject()
-    if (!active) return
-    if (active.type === 'activeSelection') {
-        active.forEachObject((obj) => {
-            canvas.value.remove(obj)
-        })
-    } else {
-        canvas.value.remove(active)
-    }
-    canvas.discardActiveObject()
-    canvas.value.renderAll()
-    clearActiveObject()
-}
-
-//最前面
-const bringToFront = () => {
-
-    if (!activeObject.value) return
-
-    canvas.bringObjectToFront(activeObject.value)
-
-    canvas.value.renderAll()
-
-    saveHistory()
-}
-
-//最背面
-const sendToBack = () => {
-
-    if (!activeObject.value) return
-
-    canvas.sendObjectToBack(activeObject.value)
-
-    canvas.value.renderAll()
-
-    saveHistory()
-}
-
-watch(fillColor, (color) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-
-    activeObject.value.set('fill', color)
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
-// X座標が変更されたら、Fabricオブジェクトに反映
-watch(left, (value) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-    if (Number.isNaN(value)) return
-
-    activeObject.value.set('left', value)
-    activeObject.value.setCoords()
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
-// Y座標が変更されたら、Fabricオブジェクトに反映
-watch(top, (value) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-    if (Number.isNaN(value)) return
-
-    activeObject.value.set('top', value)
-    activeObject.value.setCoords()
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
-// 幅が変更されたら、scaleXを再計算してFabricオブジェクトに反映
-// getScaledWidth()で表示しているため、書き戻しもスケール経由で行う
-watch(objectWidth, (value) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-    if (Number.isNaN(value)) return
-    if (!activeObject.value.width) return  // 0除算防止
-
-    activeObject.value.scaleX = value / activeObject.value.width
-    activeObject.value.setCoords()
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
-// 高さが変更されたら、scaleYを再計算してFabricオブジェクトに反映
-watch(objectHeight, (value) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-    if (Number.isNaN(value)) return
-    if (!activeObject.value.height) return  // 0除算防止
-
-    activeObject.value.scaleY = value / activeObject.value.height
-    activeObject.value.setCoords()
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
-// 回転角度が変更されたら、Fabricオブジェクトに反映
-watch(angle, (value) => {
-    if (isSyncingFromObject) return
-    if (!activeObject.value) return
-    if (Number.isNaN(value)) return
-
-    activeObject.value.rotate(value)
-    activeObject.value.setCoords()
-    canvas.value.renderAll()
-    saveHistory()
-}, { flush: 'sync' })
-
+/* =========================
+  lifecycle
+========================= */
 onMounted(() => {
+  canvas.initCanvas()
 
-    if (!canvasEl.value) return
+  history.init()
 
-    // =========================
-    // Fabric 初期化
-    // =========================
-    canvas.value = new Canvas(canvasEl.value, {
-        width: 1000,
-        height: 600,
-        backgroundColor: '#ffffff',
-        selection: true
-    })
+  panel.bind()
+  events.bind()
+  keyboard.bind()
 
-    canvas.value.renderAll()
-
-    canvas.value.freeDrawingBrush= new PencilBrush(canvas)
-    canvas.value.freeDrawingBrush.color = '#000000'
-    canvas.value.freeDrawingBrush.width = 3
-
-    canvas.value.on('object:added', saveHistory)
-    canvas.value.on('object:modified', saveHistory)
-    canvas.value.on('object:removed', saveHistory)
-
-    // 選択系イベント
-    canvas.value.on('selection:created', updateActiveObject)
-    canvas.value.on('selection:updated', updateActiveObject)
-    canvas.value.on('selection:cleared', clearActiveObject)
-
-    // キャンバス上で直接操作した場合も
-    // パネルの表示を最新に同期する
-    canvas.value.on('object:moving', (e) => syncPanelFromObject(e.target))
-    canvas.value.on('object:scaling', (e) => syncPanelFromObject(e.target))
-    canvas.value.on('object:rotating', (e) => syncPanelFromObject(e.target))
-    canvas.value.on('object:modified', (e) => syncPanelFromObject(e.target))
-
-
-
-
-    // =========================
-    // 初期オブジェクト
-    // =========================
-    canvas.value.add(
-        new Rect({
-            left: 100,
-            top: 100,
-            width: 120,
-            height: 120,
-            fill: `hsl(${Math.random() * 360},70%,60%)`
-        })
-    )
-
-
-
-    // =========================
-    // キャンバスクリック
-    // =========================
-    canvas.on('mouse:down', (opt) => {
-
-        // 選択モード
-        if (currentTool.value === 'select') {
-            return
-        }
-
-        // ペンモード
-        if (currentTool.value === 'pen') {
-            return
-        }
-
-        // 四角モード
-        if (currentTool.value === 'rectangle') {
-
-            // 既存オブジェクトの上をクリックした場合は新規作成せず、
-            // そのオブジェクトを選択状態にする
-            // （これがないと、四角ツールがアクティブなまま既存オブジェクトを
-            //   クリックしても activeObject が更新されず、
-            //   プロパティパネルの削除ボタンなどが効かなくなる）
-            if (opt.target) {
-                canvas.setActiveObject(opt.target)
-                updateActiveObject()
-                canvas.value.renderAll()
-                return
-            }
-
-            const pointer = canvas.getScenePoint(opt.e)
-
-            const rect = new Rect({
-                left: pointer.x,
-                top: pointer.y,
-                width: 100,
-                height: 100,
-                fill: currentColor.value
-            })
-
-            canvas.add(rect)
-            canvas.setActiveObject(rect)
-            canvas.value.renderAll()
-
-            return
-        }
-
-        // テキストモード
-        if (currentTool.value === 'text') {
-
-            // 四角モードと同様、既存オブジェクトの上なら選択状態にする
-            if (opt.target) {
-                canvas.setActiveObject(opt.target)
-                updateActiveObject()
-                canvas.value.renderAll()
-                return
-            }
-
-            const pointer = canvas.getScenePoint(opt.e)
-
-            const text = new IText('テキスト', {
-                left: pointer.x,
-                top: pointer.y,
-                fontSize: 32,
-                fill: currentColor.value
-            })
-
-            canvas.add(text)
-            canvas.setActiveObject(text)
-            canvas.value.renderAll()
-
-            return
-        }
-
-    })
-
-    // =========================
-    // Deleteキー
-    // =========================
-    handleKeydown = (e) => {
-
-        // Ctrl+C
-        if (e.ctrlKey && e.key.toLowerCase() === 'c') {
-
-            const activeObject = canvas.getActiveObject()
-
-            if (!activeObject) return
-
-            activeObject.clone().then((cloned) => {
-                clipboard = cloned
-            })
-
-            e.preventDefault()
-            return
-        }
-
-        // Ctrl+V
-        if (e.ctrlKey && e.key.toLowerCase() === 'v') {
-
-            if (!clipboard) return
-
-            clipboard.clone().then((clonedObj) => {
-
-                canvas.discardActiveObject()
-
-                if (clonedObj.type === 'activeSelection') {
-
-                    clonedObj.canvas = canvas
-
-                    clonedObj.forEachObject((obj) => {
-                        canvas.add(obj)
-                    })
-
-                    clonedObj.set({
-                        left: (clonedObj.left || 0) + 20,
-                        top: (clonedObj.top || 0) + 20
-                    })
-
-                    const selection = new ActiveSelection(
-                        clonedObj.getObjects(),
-                        { canvas }
-                    )
-
-                    canvas.setActiveObject(selection)
-
-                } else {
-
-                    clonedObj.set({
-                        left: (clonedObj.left || 0) + 20,
-                        top: (clonedObj.top || 0) + 20
-                    })
-
-                    canvas.add(clonedObj)
-                    canvas.setActiveObject(clonedObj)
-                }
-
-                canvas.value.requestRenderAll()
-
-                saveHistory()
-
-                clipboard = clonedObj
-
-            })
-
-            e.preventDefault()
-            return
-        }
-
-        if (e.key !== 'Delete' && e.key !== 'Backspace') return
-
-        const active = canvas.getActiveObject()
-
-        if (!active) return
-
-        if (active.type === 'activeSelection') {
-
-            active.forEachObject((obj) => {
-                canvas.value.remove(obj)
-            })
-
-        } else {
-
-            canvas.value.remove(active)
-
-        }
-
-        canvas.discardActiveObject()
-        canvas.value.renderAll()
-
-    }
-
-    document.addEventListener('keydown', handleKeydown)
-
-})
-// =========================
-// 画像読み込み
-// =========================
-const openImage = () => {
-    imageInput.value.click()
-}
-const loadImage = async (event) => {
-
-    const file = event.target.files[0]
-
-    // 同じ画像を連続で選択できるようにする
-    event.target.value = ''
-
-    if (!file) return
-
-    const reader = new FileReader()
-
-    reader.onload = async () => {
-
-        const img = await FabricImage.fromURL(reader.result)
-
-        img.set({
-            left: 100,
-            top: 100
-        })
-
-        // 大きすぎる画像は縮小
-        const maxWidth = 400
-
-        if (img.width > maxWidth) {
-            img.scale(maxWidth / img.width)
-        }
-
-        canvas.add(img)
-        canvas.setActiveObject(img)
-        updateActiveObject()
-        canvas.value.requestRenderAll()
-        saveHistory()
-    }
-
-    reader.readAsDataURL(file)
-}
-
-// =========================
-// ツール切替
-// =========================
-watch(currentTool, (tool) => {
-    if (!canvas) return
-    if (tool === 'pen') {
-        canvas.isDrawingMode = true
-        canvas.value.freeDrawingBrush.color = currentColor.value
-    } else {
-        canvas.isDrawingMode = false
-    }
+  canvas.addDefaultRect?.()
 })
 
-// =========================
-// 色の切替
-// =========================
-
-watch(currentColor, (color) => {
-    if (!canvas) return
-    if (canvas.value.freeDrawingBrush) {
-        canvas.value.freeDrawingBrush.color = color
-    }
-
-})
-
-// =========================
-// 終了処理
-// =========================
 onUnmounted(() => {
-
-    if (handleKeydown) {
-        document.removeEventListener('keydown', handleKeydown)
-    }
-
-    if (canvas.value) {
-        canvas.value.dispose()
-        canvas = null
-    }
-
+  keyboard.unbind()
+  canvas.destroyCanvas()
 })
 </script>
 

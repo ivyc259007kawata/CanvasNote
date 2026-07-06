@@ -3,7 +3,7 @@ import { ref } from 'vue'
 /**
  * Fabric.js用 Undo / Redo 管理Composable
  *
- * - canvas.toJSON() を履歴として保存
+ * - canvas.value.toJSON() を履歴として保存
  * - undo / redo 対応
  * - isRestoring中は履歴保存を止める
  */
@@ -20,14 +20,14 @@ export function useHistory(canvas) {
     // =========================
     // スナップショット保存
     // =========================
-    const save = () => {
-        if (!canvas) return
+    const saveHistory = () => {
+        if (!canvas.value) return
         if (isRestoring.value) return
 
         if (timer) clearTimeout(timer)
 
         timer = setTimeout(() => {
-            const json = JSON.stringify(canvas.toJSON())
+            const json = JSON.stringify(canvas.value.toJSON())
 
             // 同じ状態なら保存しない
             if (history.value[historyIndex.value] === json) return
@@ -44,7 +44,7 @@ export function useHistory(canvas) {
     // Undo
     // =========================
     const undo = async () => {
-        if (!canvas) return
+        if (!canvas.value) return
         if (historyIndex.value <= 0) return
 
         historyIndex.value--
@@ -52,8 +52,8 @@ export function useHistory(canvas) {
         isRestoring.value = true
 
         try {
-            await canvas.loadFromJSON(history.value[historyIndex.value])
-            canvas.requestRenderAll()
+            await canvas.value.loadFromJSON(history.value[historyIndex.value])
+            canvas.value.requestRenderAll()
         } finally {
             isRestoring.value = false
         }
@@ -63,7 +63,7 @@ export function useHistory(canvas) {
     // Redo
     // =========================
     const redo = async () => {
-        if (!canvas) return
+        if (!canvas.value) return
         if (historyIndex.value >= history.value.length - 1) return
 
         historyIndex.value++
@@ -71,8 +71,8 @@ export function useHistory(canvas) {
         isRestoring.value = true
 
         try {
-            await canvas.loadFromJSON(history.value[historyIndex.value])
-            canvas.requestRenderAll()
+            await canvas.value.loadFromJSON(history.value[historyIndex.value])
+            canvas.value.requestRenderAll()
         } finally {
             isRestoring.value = false
         }
@@ -82,8 +82,8 @@ export function useHistory(canvas) {
     // 初期状態を登録
     // =========================
     const init = () => {
-        if (!canvas) return
-        const json = JSON.stringify(canvas.toJSON())
+        if (!canvas.value) return
+        const json = JSON.stringify(canvas.value.toJSON())
 
         history.value = [json]
         historyIndex.value = 0
@@ -93,7 +93,7 @@ export function useHistory(canvas) {
         history,
         historyIndex,
         isRestoring,
-        save,
+        saveHistory,
         undo,
         redo,
         init

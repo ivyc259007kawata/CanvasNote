@@ -5,7 +5,7 @@ export function useCanvasEvents(canvas, state, panel, saveHistory) {
     const onMouseDown = (opt) => {
         if (!canvas.value) return
 
-        const tool = state.tool.value
+        const tool = state.tool
 
         // =========================
         // 選択モード
@@ -45,7 +45,7 @@ export function useCanvasEvents(canvas, state, panel, saveHistory) {
                 top: pointer.y,
                 width: 120,
                 height: 120,
-                fill: state.color.value
+                fill: state.color
             })
 
             canvas.value.add(rect)
@@ -72,7 +72,7 @@ export function useCanvasEvents(canvas, state, panel, saveHistory) {
                 left: pointer.x,
                 top: pointer.y,
                 fontSize: 32,
-                fill: state.color.value
+                fill: state.color
             })
 
             canvas.value.add(text)

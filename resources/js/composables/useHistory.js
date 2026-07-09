@@ -1,50 +1,50 @@
 import { ref } from 'vue'
 
-/**
- * Fabric.js用 Undo / Redo 管理Composable
- *
- * - canvas.value.toJSON() を履歴として保存
- * - undo / redo 対応
- * - isRestoring中は履歴保存を止める
- */
 export function useHistory(canvas) {
+
     const history = ref([])
     const historyIndex = ref(-1)
 
-    // Undo/Redo中フラグ
     const isRestoring = ref(false)
 
-    // デバウンス用タイマー
     let timer = null
 
+    const fabricCanvas = () => canvas.value.value
+
     // =========================
-    // スナップショット保存
+    // 履歴保存
     // =========================
     const saveHistory = () => {
-        if (!canvas.value) return
+
+        if (!fabricCanvas()) return
         if (isRestoring.value) return
 
-        if (timer) clearTimeout(timer)
+        clearTimeout(timer)
 
         timer = setTimeout(() => {
-            const json = JSON.stringify(canvas.value.toJSON())
 
-            // 同じ状態なら保存しない
+            const json = JSON.stringify(
+                fabricCanvas().toJSON()
+            )
+
             if (history.value[historyIndex.value] === json) return
 
-            // 現在位置より後ろを削除（分岐削除）
             history.value.splice(historyIndex.value + 1)
 
             history.value.push(json)
+
             historyIndex.value = history.value.length - 1
+
         }, 300)
+
     }
 
     // =========================
     // Undo
     // =========================
     const undo = async () => {
-        if (!canvas.value) return
+
+        if (!fabricCanvas()) return
         if (historyIndex.value <= 0) return
 
         historyIndex.value--
@@ -52,18 +52,27 @@ export function useHistory(canvas) {
         isRestoring.value = true
 
         try {
-            await canvas.value.loadFromJSON(history.value[historyIndex.value])
-            canvas.value.requestRenderAll()
+
+            await fabricCanvas().loadFromJSON(
+                history.value[historyIndex.value]
+            )
+
+            fabricCanvas().requestRenderAll()
+
         } finally {
+
             isRestoring.value = false
+
         }
+
     }
 
     // =========================
     // Redo
     // =========================
     const redo = async () => {
-        if (!canvas.value) return
+
+        if (!fabricCanvas()) return
         if (historyIndex.value >= history.value.length - 1) return
 
         historyIndex.value++
@@ -71,31 +80,52 @@ export function useHistory(canvas) {
         isRestoring.value = true
 
         try {
-            await canvas.value.loadFromJSON(history.value[historyIndex.value])
-            canvas.value.requestRenderAll()
+
+            await fabricCanvas().loadFromJSON(
+                history.value[historyIndex.value]
+            )
+
+            fabricCanvas().requestRenderAll()
+
         } finally {
+
             isRestoring.value = false
+
         }
+
     }
 
     // =========================
-    // 初期状態を登録
+    // 初期履歴
     // =========================
     const init = () => {
-        if (!canvas.value) return
-        const json = JSON.stringify(canvas.value.toJSON())
+
+        if (!fabricCanvas()) return
+
+        const json = JSON.stringify(
+            fabricCanvas().toJSON()
+        )
 
         history.value = [json]
+
         historyIndex.value = 0
+
     }
 
     return {
+
         history,
         historyIndex,
+
         isRestoring,
+
         saveHistory,
+
         undo,
         redo,
+
         init
+
     }
+
 }

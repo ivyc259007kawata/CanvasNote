@@ -1,74 +1,68 @@
 <template>
-  <div class="canvas-page">
+    <div class="canvas-page">
 
-    <CanvasToolbar
-      :tool="state.tool"
-      @update:tool="state.tool = $event"
-      @update:color="state.color = $event"
-      @image="image.openImage"
-      @undo="history.undo"
-      @redo="history.redo"
-      @open="openCanvas"
-      @save="openSaveDialog"
-    />
+        <CanvasToolbar :tool="state.tool" @update:tool="state.tool = $event" @update:color="state.color = $event"
+            @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
+            @save="save.openSaveDialog" />
 
-    <input ref="fileInput" type="file" accept=".canvas,.json" hidden @change="loadCanvasFile" />
-    <input ref="imageInput" type="file" accept="image/*" hidden />
+        <input ref="fileInput" type="file" accept=".canvas,.json" hidden @change="save.loadCanvasFile" />
+        <input ref="imageInput" type="file" accept="image/*" hidden />
 
-    <!-- 保存ダイアログ -->
-    <div v-if="showSaveDialog" class="dialog-overlay" @click.self="closeSaveDialog">
-      <div class="dialog-box">
-        <h3>保存形式を選択</h3>
+        <!-- 保存ダイアログ -->
+        <div v-if="save.showSaveDialog" class="dialog-overlay" @click.self="save.closeSaveDialog">
+            <div class="dialog-box">
+                <h3>保存形式を選択</h3>
 
-        <button @click="save.saveAsCanvas()">.canvas</button>
-        <button @click="save.saveAsImage('png')">.png</button>
-        <button @click="save.saveAsImage('jpeg')">.jpg</button>
+                <button @click="save.saveAsCanvas()">.canvas</button>
+                <button @click="save.saveAsImage('png')">.png</button>
+                <button @click="save.saveAsImage('jpeg')">.jpg</button>
 
-        <button @click="closeSaveDialog">キャンセル</button>
-      </div>
-    </div>
-
-    <div class="layout">
-      <canvas ref="canvasEl" width="1000" height="600"></canvas>
-
-      <div class="property-panel">
-        <h3>プロパティ</h3>
-
-        <div v-if="panel.activeObject">
-          <p>タイプ: {{ panel.activeObject.type }}</p>
-
-          <label>色</label>
-          <input type="color" v-model="panel.fillColor" />
-
-          <label>X</label>
-          <input type="number" v-model.number="panel.left" />
-
-          <label>Y</label>
-          <input type="number" v-model.number="panel.top" />
-
-          <label>幅</label>
-          <input type="number" v-model.number="panel.objectWidth" />
-
-          <label>高さ</label>
-          <input type="number" v-model.number="panel.objectHeight" />
-
-          <label>回転</label>
-          <input type="number" v-model.number="panel.angle" />
-
-          <button @click="panel.bringToFront()">⬆ 最前面</button>
-          <button @click="panel.sendToBack()">⬇ 最背面</button>
-          <button @click="panel.deleteObject()">🗑 削除</button>
+                <button @click="save.closeSaveDialog()">キャンセル</button>
+            </div>
         </div>
 
-        <div v-else>未選択</div>
-      </div>
-    </div>
+        <div class="layout">
+            <canvas ref="canvasEl" width="1000" height="600"></canvas>
 
-  </div>
+            <div class="property-panel">
+                <h3>プロパティ</h3>
+
+                <div v-if="panel.activeObject">
+                    <p>タイプ: {{ panel.activeObject.type }}</p>
+
+                    <label>色</label>
+                    <input type="color" v-model="panel.fillColor" />
+
+                    <label>X</label>
+                    <input type="number" v-model.number="panel.left" />
+
+                    <label>Y</label>
+                    <input type="number" v-model.number="panel.top" />
+
+                    <label>幅</label>
+                    <input type="number" v-model.number="panel.objectWidth" />
+
+                    <label>高さ</label>
+                    <input type="number" v-model.number="panel.objectHeight" />
+
+                    <label>回転</label>
+                    <input type="number" v-model.number="panel.angle" />
+
+                    <button @click="panel.bringToFront()">⬆ 最前面</button>
+                    <button @click="panel.sendToBack()">⬇ 最背面</button>
+                    <button @click="panel.deleteObject()">🗑 削除</button>
+                </div>
+
+                <div v-else>未選択</div>
+            </div>
+        </div>
+
+    </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 
 import CanvasToolbar from './CanvasToolbar.vue'
 
@@ -97,8 +91,8 @@ const canvas = useCanvas(canvasEl)
   UI state
 ========================= */
 const state = reactive({
-  tool: 'select',
-  color: '#000000'
+    tool: 'select',
+    color: '#000000'
 })
 
 /* =========================
@@ -108,55 +102,42 @@ const history = useHistory(canvas)
 const panel = usePropertyPanel(canvas, history.saveHistory)
 const clipboard = useClipboard(canvas, history.saveHistory)
 const image = useImage(canvas, imageInput, history.saveHistory)
-const save = useSaveLoad(canvas)
+const save = useSaveLoad(canvas, history.saveHistory)
 const events = useCanvasEvents(canvas, state, panel, history.saveHistory)
 const keyboard = useKeyboard(canvas, history.saveHistory, clipboard)
 
-/* =========================
-  dialog
-========================= */
-const showSaveDialog = ref(false)
-
-const openSaveDialog = () => (showSaveDialog.value = true)
-const closeSaveDialog = () => (showSaveDialog.value = false)
+console.log('fillColor =', panel.fillColor)
+console.log('left =', panel.left)
+console.log('top =', panel.top)
+console.log('showSaveDialog =', save.showSaveDialog)
 
 /* =========================
   file operations
 ========================= */
 const openCanvas = () => fileInput.value?.click()
 
-const loadCanvasFile = async (e) => {
-  const file = e.target.files[0]
-  e.target.value = ''
-  if (!file) return
-
-  const text = await file.text()
-  const json = JSON.parse(text)
-
-  await canvas.value.loadFromJSON(json)
-  canvas.value.requestRenderAll()
-
-  history.saveHistory()
-}
 
 /* =========================
   lifecycle
 ========================= */
 onMounted(() => {
-  canvas.initCanvas()
+    canvas.initCanvas()
 
-  history.init()
+    history.init()
 
-  panel.bind()
-  events.bind()
-  keyboard.bind()
+    panel.startWatchers(watch)
+    panel.bindCanvasEvents()
 
-  canvas.addDefaultRect?.()
+    events.bindEvents()
+    keyboard.bindKeyboard()
+
+    canvas.addDefaultRect()
 })
 
 onUnmounted(() => {
-  keyboard.unbind()
-  canvas.destroyCanvas()
+    keyboard.unbindKeyboard()
+    events.unbindEvents()
+    canvas.destroyCanvas()
 })
 </script>
 

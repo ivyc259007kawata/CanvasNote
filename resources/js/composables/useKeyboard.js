@@ -1,24 +1,38 @@
 import { ActiveSelection } from 'fabric'
 
-export function useKeyboard(canvas, saveHistory, clipboard) {
+
+export function useKeyboard(
+    canvasManager,
+    saveHistory,
+    clipboard
+) {
 
     let keyHandler = null
 
+    const fabricCanvas = () => {
+        return canvasManager.canvas.value
+    }
+
     const onKeydown = (e) => {
-        if (!canvas.value) return
 
-        const active = canvas.value.getActiveObject()
+        const canvas = fabricCanvas()
 
+        if (!canvas) return
+
+        const active =
+            canvas.getActiveObject()
         // =========================
         // コピー
         // =========================
-        if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+        if (
+            e.ctrlKey &&
+            e.key.toLowerCase() === 'c'
+        ) {
             if (!active) return
-
-            active.clone().then((cloned) => {
-                clipboard.set(cloned)
-            })
-
+            active.clone()
+                .then((cloned) => {
+                    clipboard.set(cloned)
+                })
             e.preventDefault()
             return
         }
@@ -26,83 +40,113 @@ export function useKeyboard(canvas, saveHistory, clipboard) {
         // =========================
         // ペースト
         // =========================
-        if (e.ctrlKey && e.key.toLowerCase() === 'v') {
-            if (!clipboard.value) return
+        if (
+            e.ctrlKey &&
+            e.key.toLowerCase() === 'v'
+        ) {
 
-            clipboard.value.clone().then((obj) => {
-
-                canvas.value.discardActiveObject()
-
-                obj.set({
-                    left: (obj.left || 0) + 20,
-                    top: (obj.top || 0) + 20
-                })
-
-                // activeSelection対応
-                if (obj.type === 'activeSelection') {
-
-                    obj.canvas = canvas.value
-
-                    obj.forEachObject((o) => {
-                        canvas.value.add(o)
+            const copied =
+                clipboard.get()
+            if (!copied) return
+            copied.clone()
+                .then((obj) => {
+                    canvas.discardActiveObject()
+                    obj.set({
+                        left:
+                            (obj.left || 0) + 20,
+                        top:
+                            (obj.top || 0) + 20
                     })
 
-                    const selection = new ActiveSelection(obj.getObjects(), {
-                        canvas: canvas.value
-                    })
+                    // 複数選択コピー
+                    if (
+                        obj.type === 'activeSelection'
+                    ) {
+                        obj.canvas = canvas
+                        obj.forEachObject(
+                            (o) => {
+                                canvas.add(o)
+                            }
+                        )
 
-                    canvas.value.setActiveObject(selection)
+                        const selection =
+                            new ActiveSelection(
+                                obj.getObjects(),
+                                {
+                                    canvas
+                                }
+                            )
+                        canvas.setActiveObject(
+                            selection
+                        )
+                    } else {
+                        canvas.add(obj)
+                        canvas.setActiveObject(
+                            obj
+                        )
+                    }
+                    canvas.requestRenderAll()
+                    saveHistory()
+                    // コピー元更新
+                    obj.clone()
+                        .then((deep) => {
+                            clipboard.set(deep)
+                        })
 
-                } else {
-                    canvas.value.add(obj)
-                    canvas.value.setActiveObject(obj)
-                }
-
-                canvas.value.requestRenderAll()
-                saveHistory()
-
-                // deep copy更新
-                obj.clone().then((deep) => {
-                    clipboard.set(deep)
                 })
-            })
-
             e.preventDefault()
             return
         }
-
         // =========================
         // 削除
         // =========================
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-
+        if (
+            e.key === 'Delete' ||
+            e.key === 'Backspace'
+        ) {
             if (!active) return
+            if (
+                active.type === 'activeSelection' ||
+                active.type === 'group'
+            ) {
+                active.forEachObject(
+                    (obj) => {
+                        canvas.remove(obj)
+                    }
+                )
 
-            if (active.type === 'activeSelection' || active.type === 'group') {
-                active.forEachObject((obj) => canvas.value.remove(obj))
             } else {
-                canvas.value.remove(active)
+
+                canvas.remove(active)
             }
-
-            canvas.value.discardActiveObject()
-            canvas.value.renderAll()
-
+            canvas.discardActiveObject()
+            canvas.requestRenderAll()
             saveHistory()
         }
     }
 
     const bindKeyboard = () => {
         keyHandler = onKeydown
-        document.addEventListener('keydown', keyHandler)
+        document.addEventListener(
+            'keydown',
+            keyHandler
+        )
     }
 
     const unbindKeyboard = () => {
-        document.removeEventListener('keydown', keyHandler)
+        if (!keyHandler) return
+        document.removeEventListener(
+            'keydown',
+            keyHandler
+        )
         keyHandler = null
     }
 
     return {
         bindKeyboard,
         unbindKeyboard
+
     }
+
+
 }

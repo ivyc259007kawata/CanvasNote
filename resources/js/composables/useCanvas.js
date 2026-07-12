@@ -1,10 +1,12 @@
 import { ref } from 'vue'
-import { Canvas, Rect, PencilBrush } from 'fabric'
+import { Canvas, PencilBrush, Rect } from 'fabric'
 
 export function useCanvas(canvasEl) {
 
+    // Fabric Canvas
     const canvas = ref(null)
 
+    // 初期化
     const initCanvas = () => {
 
         canvas.value = new Canvas(canvasEl.value, {
@@ -14,36 +16,55 @@ export function useCanvas(canvasEl) {
             selection: true
         })
 
-        canvas.value.freeDrawingBrush = new PencilBrush(canvas.value)
-        canvas.value.freeDrawingBrush.color = '#000000'
-        canvas.value.freeDrawingBrush.width = 3
+        // ペン
+        const brush = new PencilBrush(canvas.value)
+        brush.color = '#000000'
+        brush.width = 3
+
+        canvas.value.freeDrawingBrush = brush
 
         return canvas.value
     }
 
+    // 破棄
     const destroyCanvas = () => {
-        canvas.value?.dispose()
+
+        if (!canvas.value) return
+
+        canvas.value.dispose()
         canvas.value = null
     }
 
+    // テスト用
     const addDefaultRect = () => {
 
         if (!canvas.value) return
 
-        canvas.value.add(
-            new Rect({
-                left: 100,
-                top: 100,
-                width: 120,
-                height: 120,
-                fill: 'red'
-            })
-        )
+
+        const rect = new Rect({
+
+            left: 100,
+            top: 100,
+            width: 120,
+            height: 120,
+            fill: '#ff4444'
+
+        })
+
+
+        canvas.value.add(rect)
+
+        canvas.value.setActiveObject(rect)
+
+        canvas.value.requestRenderAll()
+
     }
 
-    return Object.assign(canvas, {
+    return {
+        canvas,
         initCanvas,
         destroyCanvas,
         addDefaultRect
-    })
+    }
+
 }

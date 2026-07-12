@@ -9,11 +9,12 @@ export function useHistory(canvas) {
 
     let timer = null
 
-    const fabricCanvas = () => canvas.value.value
+    // Fabric Canvas取得
+    const fabricCanvas = () => canvas.canvas.value
 
-    // =========================
+    //=========================
     // 履歴保存
-    // =========================
+    //=========================
     const saveHistory = () => {
 
         if (!fabricCanvas()) return
@@ -27,7 +28,9 @@ export function useHistory(canvas) {
                 fabricCanvas().toJSON()
             )
 
-            if (history.value[historyIndex.value] === json) return
+            if (history.value[historyIndex.value] === json) {
+                return
+            }
 
             history.value.splice(historyIndex.value + 1)
 
@@ -39,9 +42,9 @@ export function useHistory(canvas) {
 
     }
 
-    // =========================
+    //=========================
     // Undo
-    // =========================
+    //=========================
     const undo = async () => {
 
         if (!fabricCanvas()) return
@@ -67,9 +70,9 @@ export function useHistory(canvas) {
 
     }
 
-    // =========================
+    //=========================
     // Redo
-    // =========================
+    //=========================
     const redo = async () => {
 
         if (!fabricCanvas()) return
@@ -95,18 +98,18 @@ export function useHistory(canvas) {
 
     }
 
-    // =========================
-    // 初期履歴
-    // =========================
+    //=========================
+    // 初期状態
+    //=========================
     const init = () => {
 
         if (!fabricCanvas()) return
 
-        const json = JSON.stringify(
-            fabricCanvas().toJSON()
-        )
-
-        history.value = [json]
+        history.value = [
+            JSON.stringify(
+                fabricCanvas().toJSON()
+            )
+        ]
 
         historyIndex.value = 0
 

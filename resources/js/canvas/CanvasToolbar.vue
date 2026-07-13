@@ -1,37 +1,25 @@
 <template>
     <div class="toolbar">
 
-        <button
-            @click="$emit('update:tool', 'select')"
-            :class="{ active: tool === 'select' }">
+        <button @click="$emit('update:tool', 'select')" :class="{ active: tool === 'select' }">
             🖱 選択
         </button>
 
-        <button
-            @click="$emit('update:tool', 'rectangle')"
-            :class="{ active: tool === 'rectangle' }">
+        <button @click="$emit('update:tool', 'rectangle')" :class="{ active: tool === 'rectangle' }">
             ▭ 四角
         </button>
 
-        <button
-            @click="$emit('update:tool', 'text')"
-            :class="{ active: tool === 'text' }">
+        <button @click="$emit('update:tool', 'text')" :class="{ active: tool === 'text' }">
             📝 テキスト
         </button>
 
-        <button
-            @click="$emit('update:tool', 'pen')"
-            :class="{ active: tool === 'pen' }">
+        <button @click="$emit('update:tool', 'pen')" :class="{ active: tool === 'pen' }">
             ✏ ペン
         </button>
 
         <div class="divider"></div>
 
-        <input
-            type="color"
-            :value="color"
-            @input="$emit('update:color', $event.target.value)"
-        />
+        <input type="color" :value="color" @input="$emit('update:color', $event.target.value)" />
 
         <div class="divider"></div>
 
@@ -68,47 +56,45 @@ defineEmits([
 </script>
 
 <style scoped>
-
-.toolbar{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    padding:12px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    background:#f8f8f8;
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: #f8f8f8;
 }
 
-button{
-    padding:8px 14px;
-    border:none;
-    border-radius:6px;
-    background:#3b82f6;
-    color:white;
-    cursor:pointer;
+button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
 }
 
-button:hover{
-    background:#2563eb;
+button:hover {
+    background: #2563eb;
 }
 
-button.active{
-    background:#1d4ed8;
+button.active {
+    background: #1d4ed8;
 }
 
-input[type="color"]{
-    width:42px;
-    height:42px;
-    padding:0;
-    border:none;
-    background:none;
-    cursor:pointer;
+input[type="color"] {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
 }
 
-.divider{
-    width:1px;
-    background:#ccc;
-    margin:0 4px;
+.divider {
+    width: 1px;
+    background: #ccc;
+    margin: 0 4px;
 }
-
 </style>

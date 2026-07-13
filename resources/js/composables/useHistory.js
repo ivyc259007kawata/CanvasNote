@@ -10,7 +10,7 @@ export function useHistory(canvas) {
     let timer = null
 
     // Fabric Canvas取得
-    const fabricCanvas = () => canvas.canvas.value
+    const fabricCanvas = () => canvas.value
 
     //=========================
     // 履歴保存

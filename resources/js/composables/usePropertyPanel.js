@@ -22,7 +22,7 @@ export function usePropertyPanel(canvas, saveHistory) {
 
     // Fabric Canvas取得
     const fabricCanvas = () => {
-        return canvas.canvas.value
+        return canvas.value
     }
 
 
@@ -191,10 +191,10 @@ export function usePropertyPanel(canvas, saveHistory) {
     const startWatchers = (watch) => {
 
 
-        watch(fillColor, (value)=>{
+        watch(fillColor, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
             activeObject.value.set(
@@ -206,14 +206,14 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
 
-        watch(left,(value)=>{
+        watch(left, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
             activeObject.value.set(
@@ -227,14 +227,14 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
 
-        watch(top,(value)=>{
+        watch(top, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
             activeObject.value.set(
@@ -248,17 +248,17 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
 
-        watch(objectWidth,(value)=>{
+        watch(objectWidth, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
-            if(!activeObject.value.width)
+            if (!activeObject.value.width)
                 return
 
 
@@ -272,17 +272,17 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
 
-        watch(objectHeight,(value)=>{
+        watch(objectHeight, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
-            if(!activeObject.value.height)
+            if (!activeObject.value.height)
                 return
 
 
@@ -296,14 +296,14 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
 
-        watch(angle,(value)=>{
+        watch(angle, (value) => {
 
-            if(isSyncingFromObject) return
-            if(!activeObject.value) return
+            if (isSyncingFromObject) return
+            if (!activeObject.value) return
 
 
             activeObject.value.rotate(value)
@@ -314,7 +314,7 @@ export function usePropertyPanel(canvas, saveHistory) {
 
             saveHistory()
 
-        })
+        }, { flush: 'sync' })
 
 
     }
@@ -330,7 +330,7 @@ export function usePropertyPanel(canvas, saveHistory) {
 
         const fc = fabricCanvas()
 
-        if(!fc) return
+        if (!fc) return
 
 
 
@@ -353,9 +353,9 @@ export function usePropertyPanel(canvas, saveHistory) {
 
 
 
-        const syncFromTarget = (e)=>{
+        const syncFromTarget = (e) => {
 
-            if(e.target){
+            if (e.target) {
 
                 syncPanelFromObject(
                     e.target
@@ -385,7 +385,7 @@ export function usePropertyPanel(canvas, saveHistory) {
 
         fc.on(
             'object:modified',
-            ()=>{
+            () => {
 
                 syncPanelFromObject(
                     fc.getActiveObject()

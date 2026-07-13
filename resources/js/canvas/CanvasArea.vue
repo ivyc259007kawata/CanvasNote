@@ -11,33 +11,33 @@
 
 <script setup>
 
-import { ref,onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 
 
 const canvasElement = ref(null)
 
 
-const props = defineProps({
 
-    canvasEl:Object
+const emit = defineEmits([
+    'ready'
+])
 
-})
 
 
 onMounted(()=>{
 
 
-    if(props.canvasEl){
-
-        props.canvasEl.value =
-            canvasElement.value
-
-    }
+    emit(
+        'ready',
+        canvasElement.value
+    )
 
 
 })
 
+
 </script>
+
 
 
 <style scoped>

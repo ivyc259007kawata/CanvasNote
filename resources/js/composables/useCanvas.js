@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { Canvas, PencilBrush, Rect } from 'fabric'
+import { Canvas, PencilBrush, Rect, Object as FabricObject } from 'fabric'
 
 export function useCanvas(canvasEl) {
 
@@ -16,6 +16,19 @@ export function useCanvas(canvasEl) {
             selection: true
         })
 
+        // ★ ハンドルの見た目をExcel/Figma風に
+        FabricObject.prototype.set({
+            cornerStyle: 'circle',       // 四隅を丸いハンドルに
+            cornerColor: '#3b82f6',
+            cornerStrokeColor: '#ffffff',
+            cornerSize: 10,
+            transparentCorners: false,
+            borderColor: '#3b82f6',
+            borderScaleFactor: 2,
+            padding: 4
+        })
+
+
         // ペン
         const brush = new PencilBrush(canvas.value)
         brush.color = '#000000'
@@ -24,6 +37,14 @@ export function useCanvas(canvasEl) {
         canvas.value.freeDrawingBrush = brush
 
         return canvas.value
+    }
+
+    const setBrushColor = (color) => {
+
+        if (!canvas.value) return
+
+        canvas.value.freeDrawingBrush.color = color
+
     }
 
     // 破棄
@@ -64,7 +85,8 @@ export function useCanvas(canvasEl) {
         canvas,
         initCanvas,
         destroyCanvas,
-        addDefaultRect
+        addDefaultRect,
+        setBrushColor
     }
 
 }

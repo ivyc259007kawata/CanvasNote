@@ -1,4 +1,5 @@
 import { Rect, IText } from 'fabric'
+import { watch } from 'vue'
 
 
 export function useCanvasEvents(
@@ -10,7 +11,7 @@ export function useCanvasEvents(
 
 
     const fabricCanvas = () => {
-        return canvas.canvas.value
+        return canvas.value
     }
 
 
@@ -32,7 +33,7 @@ export function useCanvasEvents(
         // 選択
         // =====================
 
-        if(tool === 'select'){
+        if (tool === 'select') {
 
             return
 
@@ -44,7 +45,7 @@ export function useCanvasEvents(
         // ペン
         // =====================
 
-        if(tool === 'pen'){
+        if (tool === 'pen') {
 
             fc.isDrawingMode = true
 
@@ -70,20 +71,20 @@ export function useCanvasEvents(
         // 四角
         // =====================
 
-        if(tool === 'rectangle'){
+        if (tool === 'rectangle') {
 
 
             const rect = new Rect({
 
-                left:pointer.x,
+                left: pointer.x,
 
-                top:pointer.y,
+                top: pointer.y,
 
-                width:120,
+                width: 120,
 
-                height:120,
+                height: 120,
 
-                fill:state.color
+                fill: state.color
 
             })
 
@@ -101,6 +102,10 @@ export function useCanvasEvents(
             saveHistory()
 
 
+            // ★ 追加後は選択ツールに自動で戻す
+            state.tool = 'select'
+
+
             return
 
         }
@@ -112,20 +117,20 @@ export function useCanvasEvents(
         // テキスト
         // =====================
 
-        if(tool === 'text'){
+        if (tool === 'text') {
 
 
             const text = new IText(
                 'テキスト',
                 {
 
-                    left:pointer.x,
+                    left: pointer.x,
 
-                    top:pointer.y,
+                    top: pointer.y,
 
-                    fontSize:30,
+                    fontSize: 30,
 
-                    fill:state.color
+                    fill: state.color
 
                 }
             )
@@ -146,6 +151,14 @@ export function useCanvasEvents(
             saveHistory()
 
 
+            // ★ 追加後は選択ツールに戻し、そのまま文字入力できるようにする
+            state.tool = 'select'
+
+            text.enterEditing()
+
+            text.selectAll()
+
+
             return
 
         }
@@ -155,12 +168,12 @@ export function useCanvasEvents(
 
 
 
-    const bindEvents = ()=>{
+    const bindEvents = () => {
 
 
         const fc = fabricCanvas()
 
-        if(!fc) return
+        if (!fc) return
 
 
         fc.on(
@@ -168,17 +181,32 @@ export function useCanvasEvents(
             onMouseDown
         )
 
+
+        // ★ ツール切り替え時、ペンモードのON/OFFを確実に同期させる
+        watch(
+            () => state.tool,
+            (tool) => {
+
+                const current = fabricCanvas()
+
+                if (!current) return
+
+                current.isDrawingMode = tool === 'pen'
+
+            }
+        )
+
     }
 
 
 
 
-    const unbindEvents = ()=>{
+    const unbindEvents = () => {
 
 
         const fc = fabricCanvas()
 
-        if(!fc) return
+        if (!fc) return
 
 
         fc.off(

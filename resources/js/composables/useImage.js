@@ -3,6 +3,7 @@ import { FabricImage } from 'fabric'
 
 export function useImage(
     canvasManager,
+    imageInput,
     saveHistory,
     updateActiveObject
 ) {
@@ -19,11 +20,26 @@ export function useImage(
     }
 
     // =========================
+    // ファイル選択ダイアログを開く
+    // =========================
+
+    const openImage = () => {
+
+        imageInput.value?.click()
+
+    }
+
+    // =========================
     // 画像読み込み
     // =========================
-    const loadImageFromFile = (file) => {
+    const loadImageFromFile = (event) => {
+
         const canvas = fabricCanvas()
         if (!canvas) return
+
+        const file = event.target.files[0]
+        event.target.value = ''
+        if (!file) return
 
         const reader = new FileReader()
 
@@ -67,6 +83,7 @@ export function useImage(
         reader.readAsDataURL(file)
     }
     return {
+        openImage,
         loadImageFromFile
     }
 }

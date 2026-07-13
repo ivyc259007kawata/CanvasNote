@@ -2,7 +2,6 @@
     <div class="canvas-page">
 
         <!-- Toolbar -->
-        <!-- Toolbar -->
         <CanvasToolbar :tool="state.tool" :color="state.color" @update:tool="state.tool = $event" @update:color="(color) => {
             state.color = color
             canvas.setBrushColor(color)

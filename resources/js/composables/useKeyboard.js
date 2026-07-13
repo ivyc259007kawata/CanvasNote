@@ -101,8 +101,7 @@ export function useKeyboard(
         // 削除
         // =========================
         if (
-            e.key === 'Delete' ||
-            e.key === 'Backspace'
+            e.key === 'Delete' 
         ) {
             if (!active) return
             if (

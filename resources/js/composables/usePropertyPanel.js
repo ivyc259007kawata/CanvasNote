@@ -327,31 +327,24 @@ export function usePropertyPanel(canvas, saveHistory) {
 
     const bindCanvasEvents = () => {
 
-
         const fc = fabricCanvas()
 
         if (!fc) return
-
-
 
         fc.on(
             'selection:created',
             updateActiveObject
         )
 
-
         fc.on(
             'selection:updated',
             updateActiveObject
         )
 
-
         fc.on(
             'selection:cleared',
             clearActiveObject
         )
-
-
 
         const syncFromTarget = (e) => {
 
@@ -364,8 +357,6 @@ export function usePropertyPanel(canvas, saveHistory) {
             }
 
         }
-
-
 
         fc.on(
             'object:moving',
@@ -382,7 +373,6 @@ export function usePropertyPanel(canvas, saveHistory) {
             syncFromTarget
         )
 
-
         fc.on(
             'object:modified',
             () => {
@@ -390,6 +380,8 @@ export function usePropertyPanel(canvas, saveHistory) {
                 syncPanelFromObject(
                     fc.getActiveObject()
                 )
+
+                saveHistory()
 
             }
         )

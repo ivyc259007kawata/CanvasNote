@@ -170,7 +170,6 @@ export function useCanvasEvents(
 
     const bindEvents = () => {
 
-
         const fc = fabricCanvas()
 
         if (!fc) return
@@ -182,7 +181,13 @@ export function useCanvasEvents(
         )
 
 
-        // ★ ツール切り替え時、ペンモードのON/OFFを確実に同期させる
+        // ★ ペンで1本描き終えるたびに履歴保存
+        fc.on(
+            'path:created',
+            saveHistory
+        )
+
+
         watch(
             () => state.tool,
             (tool) => {
@@ -212,6 +217,13 @@ export function useCanvasEvents(
         fc.off(
             'mouse:down',
             onMouseDown
+        )
+
+
+        // ★ 追加した分を解除
+        fc.off(
+            'path:created',
+            saveHistory
         )
 
     }

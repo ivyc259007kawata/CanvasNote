@@ -9,7 +9,7 @@ Route::get('/', function () {
 
 use App\Http\Controllers\LessonController;
 
-Route::resource('lessons', LessonController::class);
+//Route::resource('lessons', LessonController::class);
 
 Route::get('/dashboard', function () {
     return view('dashboard');

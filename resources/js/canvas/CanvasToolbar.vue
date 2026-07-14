@@ -32,6 +32,8 @@
         <button @click="$emit('open')">📂 開く</button>
 
         <button @click="$emit('save')">💾 保存</button>
+        
+        <button @click="$emit('lesson-save')">📚 教材保存</button>
 
     </div>
 </template>
@@ -50,7 +52,8 @@ defineEmits([
     'undo',
     'redo',
     'open',
-    'save'
+    'save',
+    'lesson-save'
 ])
 
 </script>

@@ -6,7 +6,7 @@
             state.color = color
             canvas.setBrushColor(color)
         }" @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
-            @save="save.openSaveDialog" />
+            @save="save.openSaveDialog" @lesson-save="saveLesson" />
 
 
         <!-- File -->
@@ -46,12 +46,12 @@
                                     " @update:angle="
                                         panel.angle.value = $event
                                         " @front="
-                                        panel.bringToFront()
-                                        " @back="
-                                        panel.sendToBack()
-                                        " @delete="
-                                        panel.deleteObject()
-                                        " />
+                                            panel.bringToFront()
+                                            " @back="
+                                                panel.sendToBack()
+                                                " @delete="
+                                                panel.deleteObject()
+                                                " />
 
 
         </div>
@@ -67,6 +67,7 @@ import {
     ref,
     reactive,
     watch,
+    onMounted,
     onUnmounted
 } from 'vue'
 
@@ -179,7 +180,7 @@ const keyboard =
 
 const initCanvas = (el) => {
 
-    // ★ CanvasAreaから渡されたDOM要素をセット
+
     canvasEl.value = el
 
     // Fabric Canvas生成
@@ -196,7 +197,21 @@ const initCanvas = (el) => {
     keyboard.bindKeyboard()
 
     // 初期オブジェクト
-    canvas.addDefaultRect()
+    if (props.lesson?.canvasData) {
+
+        canvas.canvas.value.loadFromJSON(
+            props.lesson.canvasData,
+            () => {
+                canvas.canvas.value.requestRenderAll()
+            }
+        )
+
+    }
+    else {
+
+        canvas.addDefaultRect()
+
+    }
 
     // History
     history.init()
@@ -211,6 +226,71 @@ const initCanvas = (el) => {
 const openCanvas = () => {
 
     fileInput.value?.click()
+
+}
+
+/*
+|--------------------------------------------------------------------------
+| Lesson Save
+|--------------------------------------------------------------------------
+*/
+
+const saveLesson = () => {
+
+    if (!props.lesson) {
+
+        alert('教材が選択されていません')
+
+        return
+
+    }
+
+
+    const fc = canvas.canvas.value
+
+
+    if (!fc) return
+
+
+
+    // Canvasデータ取得
+    props.lesson.canvasData =
+        fc.toJSON()
+
+
+
+    // localStorage更新
+
+    const lessons =
+        JSON.parse(
+            localStorage.getItem('lessons') || '[]'
+        )
+
+
+    const index =
+        lessons.findIndex(
+            item =>
+                item.id === props.lesson.id
+        )
+
+
+    if (index !== -1) {
+
+        lessons[index] =
+            props.lesson
+
+    }
+
+
+    localStorage.setItem(
+        'lessons',
+        JSON.stringify(lessons)
+    )
+
+
+    alert(
+        '教材を保存しました'
+    )
 
 }
 

@@ -44,14 +44,14 @@
                                 " @update:objectHeight="
                                     panel.objectHeight.value = $event
                                     " @update:angle="
-                                    panel.angle.value = $event
-                                    " @front="
-                                    panel.bringToFront()
-                                    " @back="
-                                    panel.sendToBack()
-                                    " @delete="
-                                    panel.deleteObject()
-                                    " />
+                                        panel.angle.value = $event
+                                        " @front="
+                                        panel.bringToFront()
+                                        " @back="
+                                        panel.sendToBack()
+                                        " @delete="
+                                        panel.deleteObject()
+                                        " />
 
 
         </div>
@@ -69,6 +69,10 @@ import {
     watch,
     onUnmounted
 } from 'vue'
+
+const props = defineProps({
+    lesson: Object
+})
 
 
 import CanvasToolbar from './CanvasToolbar.vue'

@@ -1,4 +1,4 @@
 import { createApp } from 'vue'
-import CanvasNote from './canvas/CanvasNote.vue'
+import CanvasApp from './CanvasApp.vue'
 
-createApp(CanvasNote).mount('#app')
+createApp(CanvasApp).mount('#app')

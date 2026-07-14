@@ -79,12 +79,10 @@ import { useLessons }
 
 
 const {
-
     lessons,
-
     addLesson,
-
-    deleteLesson
+    deleteLesson,
+    getLesson
 
 } = useLessons()
 
@@ -122,20 +120,16 @@ const removeLesson = (id) => {
     }
 
 }
-
-
-
-import { useRouter } from 'vue-router'
-
-
-const router = useRouter()
-
+const emit = defineEmits([
+    'edit'
+])
 
 const editLesson = (id) => {
 
 
-    router.push(
-        `/lesson/${id}`
+    emit(
+        'edit',
+        getLesson(id)
     )
 
 

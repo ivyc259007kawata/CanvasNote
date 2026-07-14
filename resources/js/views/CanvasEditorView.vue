@@ -2,37 +2,40 @@
 
     <div class="editor-page">
 
-        <h2>
-            Canvas Editor
-        </h2>
+        <button @click="$emit('back')">
+            ← 教材一覧へ戻る
+        </button>
 
+        <h2>{{ lesson?.title }}</h2>
 
-        <CanvasNote />
+        <CanvasNote :lesson="lesson" />
 
     </div>
 
 </template>
 
-
 <script setup>
 
 import CanvasNote from '@/canvas/CanvasNote.vue'
 
+defineProps({
+    lesson: Object
+})
+
+defineEmits([
+    'back'
+])
 
 </script>
 
-
 <style scoped>
-.editor-page {
 
-    padding: 20px;
-
+.editor-page{
+    padding:20px;
 }
 
-
-h2 {
-
-    margin-bottom: 20px;
-
+h2{
+    margin:20px 0;
 }
+
 </style>

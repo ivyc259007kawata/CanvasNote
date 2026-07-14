@@ -1,49 +1,89 @@
-
-
 <template>
-  <div>
-    <h2>CanvasNote</h2>
-    <canvas ref="canvasEl" width="1000" height="600"></canvas>
-  </div>
+
+    <DashboardView
+        v-if="page==='dashboard'"
+        @edit="openEditor"
+    />
+
+    <CanvasEditorView
+        v-else
+        :lesson="lesson"
+        @back="backDashboard"
+    />
+
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { Canvas, Rect } from 'fabric'
 
-const canvasEl = ref(null)
+import { ref } from 'vue'
 
-console.log('canvas init')
+import DashboardView from './views/DashboardView.vue'
+import CanvasEditorView from './views/CanvasEditorView.vue'
 
-onMounted(() => {
-    const canvas = new Canvas(canvasEl.value, {
-        width: 1000,
-        height: 600,
-        backgroundColor: '#ffffff'
-    })
+const page = ref('dashboard')
 
-    const rect = new Rect({
-        left: 100,
-        top: 100,
-        width: 120,
-        height: 120,
-        fill: 'black'
-    })
+const lesson = ref(null)
 
-    canvas.add(rect)
+function openEditor(target){
 
-    canvas.on('mouse:down', (opt) => {
-        const p = canvas.getPointer(opt.e)
+    lesson.value = target
 
-        canvas.add(new Rect({
-            left: p.x,
-            top: p.y,
-            width: 100,
-            height: 100,
-            fill: 'red'
-        }))
+    page.value = 'editor'
 
-        canvas.requestRenderAll()
-    })
-})
+}
+
+function backDashboard(){
+
+    page.value = 'dashboard'
+
+}
+
 </script>
+
+<style scoped>
+.app {
+
+    display: flex;
+    flex-direction: column;
+
+}
+
+header {
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px;
+
+    background: #2563eb;
+
+    color: white;
+
+}
+
+nav {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+button {
+
+    padding: 8px 14px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+}
+
+main {
+
+    padding: 20px;
+
+}
+</style>

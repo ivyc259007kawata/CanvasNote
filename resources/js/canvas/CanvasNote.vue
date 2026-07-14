@@ -50,8 +50,8 @@
                                             " @back="
                                                 panel.sendToBack()
                                                 " @delete="
-                                                panel.deleteObject()
-                                                " />
+                                                    panel.deleteObject()
+                                                    " />
 
 
         </div>
@@ -199,22 +199,34 @@ const initCanvas = (el) => {
     // 初期オブジェクト
     if (props.lesson?.canvasData) {
 
+
         canvas.canvas.value.loadFromJSON(
             props.lesson.canvasData,
             () => {
+
                 canvas.canvas.value.requestRenderAll()
+
+
+                // 復元完了後に履歴初期化
+                history.init()
+
+                //history.saveHistory()
+
             }
         )
+
 
     }
     else {
 
+
         canvas.addDefaultRect()
 
-    }
 
-    // History
-    history.init()
+        history.init()
+
+
+    }
 
 }
 

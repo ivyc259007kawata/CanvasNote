@@ -197,11 +197,11 @@ const initCanvas = (el) => {
     keyboard.bindKeyboard()
 
     // 初期オブジェクト
-    if (props.lesson?.canvasData) {
+    if (props.lesson?.pages?.[0]?.canvasData) {
 
 
         canvas.canvas.value.loadFromJSON(
-            props.lesson.canvasData,
+            props.lesson.pages[0].canvasData,
             () => {
 
                 canvas.canvas.value.requestRenderAll()
@@ -266,8 +266,8 @@ const saveLesson = () => {
 
 
     // Canvasデータ取得
-    props.lesson.canvasData =
-        fc.toJSON()
+    props.lesson.pages[0].canvasData =
+    fc.toJSON()
 
 
 

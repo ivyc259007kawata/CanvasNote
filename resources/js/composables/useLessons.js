@@ -7,7 +7,25 @@ export function useLessons() {
     const lessons = ref(
         JSON.parse(
             localStorage.getItem('lessons') || '[]'
-        )
+        ).map(lesson => {
+
+            // 古いデータを新形式へ変換
+            if (!lesson.pages) {
+
+                lesson.pages = [
+                    {
+                        id: 1,
+                        title: 'ページ1',
+                        canvasData: lesson.canvasData ?? null
+                    }
+                ]
+
+                delete lesson.canvasData
+            }
+
+            return lesson
+
+        })
     )
 
 
@@ -36,7 +54,13 @@ export function useLessons() {
                 new Date()
                     .toLocaleDateString(),
 
-            canvasData: null
+            pages: [
+                {
+                    id: 1,
+                    title: 'ページ1',
+                    canvasData: null
+                }
+            ]
 
         }
 

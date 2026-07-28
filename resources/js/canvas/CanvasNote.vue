@@ -20,7 +20,8 @@
         <SaveDialog :show="save.showSaveDialog.value" @canvas="save.saveAsCanvas" @png="() => save.saveAsImage('png')"
             @jpg="() => save.saveAsImage('jpeg')" @close="save.closeSaveDialog" />
 
-
+        <PageTabs :pages="props.lesson.pages" :currentPage="pages.currentPage.value" @change="pages.changePage"
+            @add="pages.addPage" @delete="pages.deletePage" @rename="pages.renamePage" @move="pages.movePage" />
 
         <div class="layout">
 
@@ -53,7 +54,6 @@
                                                     panel.deleteObject()
                                                     " />
 
-
         </div>
 
     </div>
@@ -67,16 +67,19 @@ import {
     ref,
     reactive,
     watch,
-    onMounted,
-    onUnmounted
+    onUnmounted,
+    computed
 } from 'vue'
 
 const props = defineProps({
     lesson: Object
 })
 
+const lesson = computed(() => props.lesson)
+
 
 import CanvasToolbar from './CanvasToolbar.vue'
+import PageTabs from './PageTabs.vue'
 import CanvasArea from './CanvasArea.vue'
 import SaveDialog from './SaveDialog.vue'
 import PropertyPanel from './PropertyPanel.vue'
@@ -90,6 +93,7 @@ import { useKeyboard } from '@/composables/useKeyboard'
 import { useClipboard } from '@/composables/useClipboard'
 import { useImage } from '@/composables/useImage'
 import { useSaveLoad } from '@/composables/useSaveLoad'
+import { useLessonPages } from '@/composables/useLessonPages'
 
 
 
@@ -172,6 +176,14 @@ const keyboard =
         clipboard
     )
 
+
+const pages =
+    useLessonPages(
+        lesson,
+        canvas,
+        history
+    )
+
 /*
 |--------------------------------------------------------------------------
 | Canvas Initialize
@@ -196,35 +208,17 @@ const initCanvas = (el) => {
     // Keyboard
     keyboard.bindKeyboard()
 
-    // 初期オブジェクト
-    if (props.lesson?.pages?.[0]?.canvasData) {
+    // 初期ページ読み込み
+    if (props.lesson?.pages?.length) {
 
-
-        canvas.canvas.value.loadFromJSON(
-            props.lesson.pages[0].canvasData,
-            () => {
-
-                canvas.canvas.value.requestRenderAll()
-
-
-                // 復元完了後に履歴初期化
-                history.init()
-
-                //history.saveHistory()
-
-            }
-        )
-
+        pages.loadCurrentPage()
 
     }
     else {
 
-
         canvas.addDefaultRect()
 
-
         history.init()
-
 
     }
 
@@ -258,21 +252,10 @@ const saveLesson = () => {
     }
 
 
-    const fc = canvas.canvas.value
-
-
-    if (!fc) return
-
-
-
-    // Canvasデータ取得
-    props.lesson.pages[0].canvasData =
-    fc.toJSON()
-
-
+    // 表示中ページのCanvasデータを反映
+    pages.saveCurrentPage()
 
     // localStorage更新
-
     const lessons =
         JSON.parse(
             localStorage.getItem('lessons') || '[]'

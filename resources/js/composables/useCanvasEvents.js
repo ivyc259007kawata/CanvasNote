@@ -45,7 +45,10 @@ export function useCanvasEvents(
         // ペン
         // =====================
 
-        if (tool === 'pen') {
+        if (
+            tool === 'pen' ||
+            tool === 'marker'
+        ) {
 
             fc.isDrawingMode = true
 
@@ -196,7 +199,9 @@ export function useCanvasEvents(
 
                 if (!current) return
 
-                current.isDrawingMode = tool === 'pen'
+                current.isDrawingMode =
+                    tool === 'pen' ||
+                    tool === 'marker'
 
             }
         )
@@ -219,8 +224,6 @@ export function useCanvasEvents(
             onMouseDown
         )
 
-
-        // ★ 追加した分を解除
         fc.off(
             'path:created',
             saveHistory

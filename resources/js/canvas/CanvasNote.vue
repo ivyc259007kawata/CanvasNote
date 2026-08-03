@@ -2,10 +2,25 @@
     <div class="canvas-page">
 
         <!-- Toolbar -->
-        <CanvasToolbar :tool="state.tool" :color="state.color" @update:tool="state.tool = $event" @update:color="(color) => {
-            state.color = color
-            canvas.setBrushColor(color)
-        }" @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
+        <CanvasToolbar :tool="state.tool" :color="state.color" :brushWidth="state.brushWidth" @update:tool="(tool) => {
+
+            state.tool = tool
+
+            canvas.setTool(tool)
+
+        }" @update:color="(color) => {
+
+        state.color = color
+
+        canvas.setBrushColor(color)
+
+    }" @update:brushWidth="(width) => {
+
+        state.brushWidth = width
+
+        canvas.setBrushWidth(width)
+
+    }" @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
             @save="save.openSaveDialog" @lesson-save="saveLesson" />
 
 
@@ -94,7 +109,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useImage } from '@/composables/useImage'
 import { useSaveLoad } from '@/composables/useSaveLoad'
 import { useLessonPages } from '@/composables/useLessonPages'
-
+import { useAutoSave } from '@/composables/useAutoSave'
 
 
 /*
@@ -129,7 +144,9 @@ const state = reactive({
 
     tool: 'select',
 
-    color: '#000000'
+    color: '#000000',
+
+    brushWidth: 5
 
 })
 
@@ -184,6 +201,8 @@ const pages =
         history
     )
 
+
+
 /*
 |--------------------------------------------------------------------------
 | Canvas Initialize
@@ -195,32 +214,46 @@ const initCanvas = (el) => {
 
     canvasEl.value = el
 
+
     // Fabric Canvas生成
     canvas.initCanvas()
+
 
     // Property Panel
     panel.startWatchers(watch)
     panel.bindCanvasEvents()
 
+
     // Mouse Event
     events.bindEvents()
+
 
     // Keyboard
     keyboard.bindKeyboard()
 
+
     // 初期ページ読み込み
     if (props.lesson?.pages?.length) {
 
+
         pages.loadCurrentPage()
+
 
     }
     else {
+
 
         canvas.addDefaultRect()
 
         history.init()
 
+
     }
+
+
+    // 自動保存開始
+    autoSave.start()
+
 
 }
 
@@ -241,21 +274,13 @@ const openCanvas = () => {
 |--------------------------------------------------------------------------
 */
 
-const saveLesson = () => {
+function saveLesson(showMessage = true) {
 
-    if (!props.lesson) {
+    if (!props.lesson) return
 
-        alert('教材が選択されていません')
-
-        return
-
-    }
-
-
-    // 表示中ページのCanvasデータを反映
     pages.saveCurrentPage()
 
-    // localStorage更新
+
     const lessons =
         JSON.parse(
             localStorage.getItem('lessons') || '[]'
@@ -264,15 +289,13 @@ const saveLesson = () => {
 
     const index =
         lessons.findIndex(
-            item =>
-                item.id === props.lesson.id
+            item => item.id === props.lesson.id
         )
 
 
     if (index !== -1) {
 
-        lessons[index] =
-            props.lesson
+        lessons[index] = props.lesson
 
     }
 
@@ -283,11 +306,20 @@ const saveLesson = () => {
     )
 
 
-    alert(
-        '教材を保存しました'
-    )
+    if (showMessage) {
+
+        alert('教材を保存しました')
+
+    }
 
 }
+
+const autoSave =
+    useAutoSave(
+        lesson,
+        pages,
+        saveLesson
+    )
 
 /*
 |--------------------------------------------------------------------------
@@ -297,15 +329,13 @@ const saveLesson = () => {
 
 onUnmounted(() => {
 
+    autoSave.stop()
 
     keyboard.unbindKeyboard()
 
-
     events.unbindEvents()
 
-
     canvas.destroyCanvas()
-
 
 })
 

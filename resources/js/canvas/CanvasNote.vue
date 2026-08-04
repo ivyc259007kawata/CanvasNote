@@ -10,17 +10,17 @@
 
         }" @update:color="(color) => {
 
-        state.color = color
+            state.color = color
 
-        canvas.setBrushColor(color)
+            canvas.setBrushColor(color)
 
-    }" @update:brushWidth="(width) => {
+        }" @update:brushWidth="(width) => {
 
-        state.brushWidth = width
+            state.brushWidth = width
 
-        canvas.setBrushWidth(width)
+            canvas.setBrushWidth(width)
 
-    }" @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
+        }" @image="image.openImage" @undo="history.undo" @redo="history.redo" @open="openCanvas"
             @save="save.openSaveDialog" @lesson-save="saveLesson" />
 
 
@@ -155,8 +155,10 @@ const state = reactive({
 | Composables
 |--------------------------------------------------------------------------
 */
+
 const history =
     useHistory(canvas.canvas)
+
 
 const panel =
     usePropertyPanel(
@@ -164,8 +166,10 @@ const panel =
         history.saveHistory
     )
 
+
 const clipboard =
     useClipboard()
+
 
 const image =
     useImage(
@@ -175,23 +179,10 @@ const image =
         panel.updateActiveObject
     )
 
+
 const save =
     useSaveLoad(canvas)
 
-const events =
-    useCanvasEvents(
-        canvas.canvas,
-        state,
-        panel,
-        history.saveHistory
-    )
-
-const keyboard =
-    useKeyboard(
-        canvas,
-        history.saveHistory,
-        clipboard
-    )
 
 
 const pages =
@@ -202,6 +193,46 @@ const pages =
     )
 
 
+const updateThumbnail = () => {
+
+    const page =
+        props.lesson?.pages?.[pages.currentPage.value]
+
+
+    if (!page) return
+
+
+    page.thumbnail =
+        canvas.canvas.value.toDataURL({
+
+            format: 'png',
+
+            quality: 0.5,
+
+            multiplier: 0.2
+
+        })
+
+}
+
+
+
+const events =
+    useCanvasEvents(
+        canvas.canvas,
+        state,
+        panel,
+        history.saveHistory,
+        updateThumbnail
+    )
+
+
+const keyboard =
+    useKeyboard(
+        canvas,
+        history.saveHistory,
+        clipboard
+    )
 
 /*
 |--------------------------------------------------------------------------

@@ -6,7 +6,8 @@ export function useCanvasEvents(
     canvas,
     state,
     panel,
-    saveHistory
+    saveHistory,
+    updateThumbnail
 ) {
 
 
@@ -14,6 +15,13 @@ export function useCanvasEvents(
         return canvas.value
     }
 
+    const onPathCreated = () => {
+
+        saveHistory()
+
+        updateThumbnail()
+
+    }
 
 
     const onMouseDown = (event) => {
@@ -97,15 +105,13 @@ export function useCanvasEvents(
             fc.setActiveObject(rect)
 
             panel.updateActiveObject()
-
-
             fc.requestRenderAll()
-
-
             saveHistory()
 
+            updateThumbnail()
 
-            // ★ 追加後は選択ツールに自動で戻す
+
+            //追加後は選択ツールに自動で戻す
             state.tool = 'select'
 
 
@@ -139,22 +145,20 @@ export function useCanvasEvents(
             )
 
 
-
             fc.add(text)
 
             fc.setActiveObject(text)
 
-
             panel.updateActiveObject()
-
 
             fc.requestRenderAll()
 
-
             saveHistory()
 
+            updateThumbnail()
 
-            // ★ 追加後は選択ツールに戻し、そのまま文字入力できるようにする
+
+            // 追加後は選択ツールに戻し、そのまま文字入力できるようにする
             state.tool = 'select'
 
             text.enterEditing()
@@ -184,10 +188,9 @@ export function useCanvasEvents(
         )
 
 
-        // ★ ペンで1本描き終えるたびに履歴保存
         fc.on(
             'path:created',
-            saveHistory
+            onPathCreated
         )
 
 
@@ -224,13 +227,13 @@ export function useCanvasEvents(
             onMouseDown
         )
 
+
         fc.off(
             'path:created',
-            saveHistory
+            onPathCreated
         )
 
     }
-
 
 
     return {

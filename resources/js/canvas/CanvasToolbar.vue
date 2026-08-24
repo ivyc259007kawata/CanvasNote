@@ -26,6 +26,10 @@
             🖍 蛍光ペン
         </button>
 
+        <button @click="$emit('update:tool', 'eraser')" :class="{ active: tool === 'eraser' }">
+            🧽 消しゴム
+        </button>
+
 
 
         <div class="divider"></div>

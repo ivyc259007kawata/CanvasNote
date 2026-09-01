@@ -352,6 +352,22 @@ const autoSave =
         saveLesson
     )
 
+const emit = defineEmits([
+    'save-status'
+])
+
+watch(
+    autoSave.saveStatus,
+    (status) => {
+
+        emit(
+            'save-status',
+            status
+        )
+
+    }
+)
+
 /*
 |--------------------------------------------------------------------------
 | Destroy

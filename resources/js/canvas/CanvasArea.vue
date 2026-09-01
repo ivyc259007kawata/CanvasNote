@@ -43,11 +43,20 @@ onMounted(()=>{
 <style scoped>
 
 canvas {
+    display: block;
 
-    border:1px solid #ccc;
+    width: 100%;
+    max-width: 1000px;
 
-    background:white;
+    height: auto;
 
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+
+    background: white;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 </style>

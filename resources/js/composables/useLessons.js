@@ -197,6 +197,21 @@ export function useLessons() {
 
     }
 
+    // 教材の公開・非公開
+    const togglePublish = (id) => {
+
+        const lesson = lessons.value.find(
+            lesson => lesson.id === id
+        )
+
+        if (!lesson) return
+
+        lesson.isPublished =
+            !lesson.isPublished
+
+        save()
+    }
+
 
     return {
 
@@ -205,7 +220,8 @@ export function useLessons() {
         deleteLesson,
         getLesson,
         renameLesson,
-        duplicateLesson
+        duplicateLesson,
+        togglePublish 
 
     }
 

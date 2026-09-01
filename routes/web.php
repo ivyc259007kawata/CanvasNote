@@ -12,7 +12,15 @@ use App\Http\Controllers\LessonController;
 //Route::resource('lessons', LessonController::class);
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+
+    $user = auth()->user();
+
+    if ($user->role === 'teacher') {
+        return view('dashboard');
+    }
+
+    return view('student.dashboard');
+
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

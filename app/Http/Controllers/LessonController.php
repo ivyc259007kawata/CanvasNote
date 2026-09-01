@@ -68,7 +68,20 @@ class LessonController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $lesson = Lesson::findOrFail($id);
+
+        // 自分が作成した教材だけ変更できるようにする
+        if ($lesson->teacher_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $lesson->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'is_public' => $request->has('is_public'),
+        ]);
+
+        return redirect()->back();
     }
 
     /**

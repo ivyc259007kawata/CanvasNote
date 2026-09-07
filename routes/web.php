@@ -63,6 +63,11 @@ Route::middleware('auth')->put(
     [LessonController::class, 'apiSaveCanvas']
 );
 
+Route::middleware('auth')->get(
+    '/lessons-json/{lesson}/canvas',
+    [LessonController::class, 'apiGetCanvas']
+);
+
 Route::middleware('auth')->get('/student-lessons-json', function () {
     $lessons = \App\Models\Lesson::where('is_public', true)
         ->with('teacher')
@@ -70,6 +75,11 @@ Route::middleware('auth')->get('/student-lessons-json', function () {
 
     return response()->json($lessons);
 });
+
+Route::middleware('auth')->get(
+    '/student-lessons-json/{lesson}/canvas',
+    [LessonController::class, 'apiGetPublicCanvas']
+);
 
 Route::middleware('auth')->post(
     '/lessons-json/{lesson}/duplicate',

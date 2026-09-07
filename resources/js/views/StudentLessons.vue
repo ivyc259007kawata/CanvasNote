@@ -1,6 +1,8 @@
 <template>
 
-    <section class="lessons">
+    <StudentLessonViewer v-if="selectedLesson" :lesson="selectedLesson" @back="selectedLesson = null" />
+
+    <section v-else class="lessons">
 
         <h2>📚 公開されている教材</h2>
 
@@ -43,9 +45,11 @@
 <script setup>
 
 import { ref, onMounted } from 'vue'
+import StudentLessonViewer from './StudentLessonViewer.vue'
 
 const lessons = ref([])
 const loading = ref(true)
+const selectedLesson = ref(null)
 
 const loadLessons = async () => {
 
@@ -78,12 +82,7 @@ const loadLessons = async () => {
 }
 
 const openLesson = (lesson) => {
-
-    console.log(
-        '教材を開く:',
-        lesson
-    )
-
+    selectedLesson.value = lesson
 }
 
 onMounted(() => {

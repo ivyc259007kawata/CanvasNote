@@ -240,7 +240,7 @@ const keyboard =
 |--------------------------------------------------------------------------
 */
 
-const initCanvas = (el) => {
+const initCanvas = async (el) => {
 
 
     canvasEl.value = el
@@ -264,19 +264,23 @@ const initCanvas = (el) => {
 
 
     // 初期ページ読み込み
+    await pages.loadPagesFromServer()
+
     if (props.lesson?.pages?.length) {
+
         pages.loadCurrentPage()
+
     }
     else {
-        canvas.addDefaultRect()
-        history.init()
-    }
 
+        canvas.addDefaultRect()
+
+        history.init()
+
+    }
 
     // 自動保存開始
     autoSave.start()
-
-
 }
 
 /*

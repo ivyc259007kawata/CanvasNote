@@ -154,6 +154,26 @@ class LessonController extends Controller
         ]);
     }
 
+    public function apiGetPublicCanvas(Lesson $lesson)
+    {
+        // 公開されていない教材は見られない
+        if (!$lesson->is_public) {
+            abort(403);
+        }
+
+        $pages = $lesson->canvasElements()
+            ->orderBy('page_number')
+            ->get();
+
+        return response()->json([
+            'lesson' => [
+                'id' => $lesson->id,
+                'title' => $lesson->title,
+            ],
+            'pages' => $pages
+        ]);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

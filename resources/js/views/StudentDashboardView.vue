@@ -1,6 +1,11 @@
 <template>
-    <div class="student-dashboard">
 
+    <!-- 教材閲覧画面 -->
+    <StudentLessonViewer v-if="selectedLesson" :lesson="selectedLesson" @back="selectedLesson = null" />
+
+    <!-- 生徒Dashboard -->
+    <div v-else class="student-dashboard">
+        
         <header class="dashboard-header">
             <div>
                 <h1>📚 生徒ホーム</h1>
@@ -56,12 +61,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import StudentLessonViewer
+    from './StudentLessonViewer.vue'
 
 const userName = ref(
     window.Laravel?.user?.name ?? '生徒'
 )
 
 const lessons = ref([])
+const selectedLesson = ref(null)
 const loading = ref(true)
 
 const loadLessons = async () => {
@@ -89,12 +97,7 @@ const loadLessons = async () => {
 }
 
 const openLesson = (lesson) => {
-    console.log(
-        '教材を開く:',
-        lesson
-    )
-
-    // 教材を開く処理は後で実装
+    selectedLesson.value = lesson
 }
 
 onMounted(() => {

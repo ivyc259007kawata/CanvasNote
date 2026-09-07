@@ -1,8 +1,32 @@
+import './bootstrap'
+
+import Alpine from 'alpinejs'
+
+window.Alpine = Alpine
+
+Alpine.start()
+
 import { createApp } from 'vue'
+
 import CanvasApp from './CanvasApp.vue'
+import StudentDashboardView from './views/StudentDashboardView.vue'
 
-const canvasApp = document.getElementById('canvas-app')
+const appElement = document.getElementById('app')
 
-if (canvasApp) {
-    createApp(CanvasApp).mount(canvasApp)
+if (appElement) {
+
+    const page = appElement.dataset.page
+
+    if (page === 'student') {
+
+        // 生徒Dashboard
+        createApp(StudentDashboardView)
+            .mount('#app')
+
+    } else {
+
+        // 先生側CanvasNote
+        createApp(CanvasApp)
+            .mount('#app')
+    }
 }

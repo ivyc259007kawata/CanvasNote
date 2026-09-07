@@ -5,36 +5,31 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('canvas_elements', function (Blueprint $table) {
+
             $table->id();
 
             $table->foreignId('lesson_id')
                 ->constrained('lessons')
                 ->onDelete('cascade');
 
-            $table->string('element_type');
-            // text / image / answer_area / drawing
+            // ページ番号
+            $table->integer('page_number');
 
-            $table->integer('x');
-            $table->integer('y');
-            $table->integer('width')->nullable();
-            $table->integer('height')->nullable();
+            // 今回はCanvas全体を保存する
+            $table->string('element_type')
+                ->default('canvas');
 
-            $table->json('content')->nullable();
-            // テキスト内容・画像URL・設定など
+            // Fabric.jsのCanvas JSON
+            $table->json('content')
+                ->nullable();
 
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('canvas_elements');

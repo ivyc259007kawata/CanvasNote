@@ -29,4 +29,51 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::middleware('auth')->get('/lessons-json', function () {
+    $lessons = \App\Models\Lesson::where(
+        'teacher_id',
+        auth()->id()
+    )->get();
+
+    return response()->json($lessons);
+});
+
+Route::middleware('auth')->post(
+    '/lessons-json',
+    [LessonController::class, 'apiStore']
+);
+
+Route::middleware('auth')->put(
+    '/lessons-json/{lesson}',
+    [LessonController::class, 'apiUpdate']
+);
+
+Route::middleware('auth')->delete(
+    '/lessons-json/{lesson}',
+    [LessonController::class, 'apiDestroy']
+);
+
+Route::middleware('auth')->put(
+    '/lessons-json/{lesson}/publish',
+    [LessonController::class, 'apiTogglePublish']
+);
+
+Route::middleware('auth')->put(
+    '/lessons-json/{lesson}/canvas',
+    [LessonController::class, 'apiSaveCanvas']
+);
+
+Route::middleware('auth')->get('/student-lessons-json', function () {
+    $lessons = \App\Models\Lesson::where('is_public', true)
+        ->with('teacher')
+        ->get();
+
+    return response()->json($lessons);
+});
+
+Route::middleware('auth')->post(
+    '/lessons-json/{lesson}/duplicate',
+    [LessonController::class, 'apiDuplicate']
+);
+
 require __DIR__ . '/auth.php';

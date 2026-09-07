@@ -1,228 +1,290 @@
 import { ref } from 'vue'
 
-
 export function useLessons() {
 
+    const lessons = ref([])
 
-    const lessons = ref(
-        JSON.parse(
-            localStorage.getItem('lessons') || '[]'
-        ).map(lesson => {
+    // MySQLから教材を取得
+    const loadLessons = async () => {
+        try {
+            const response = await fetch('/lessons-json')
 
-            // =========================
-            // 古いデータを新形式へ変換
-            // =========================
+            if (!response.ok) {
+                throw new Error('教材の取得に失敗しました')
+            }
 
-            if (!lesson.pages) {
+            const data = await response.json()
 
-                lesson.pages = [
+            lessons.value = data.map(lesson => ({
+                id: lesson.id,
+                title: lesson.title,
+                description: lesson.description,
+                created: lesson.created_at,
+                isPublished: Boolean(lesson.is_public),
+
+                // Canvas側との互換性を保つ
+                pages: [
                     {
                         id: 1,
                         title: 'ページ1',
-                        canvasData: lesson.canvasData ?? null
+                        canvasData: null
                     }
                 ]
+            }))
 
-                delete lesson.canvasData
+        } catch (error) {
+            console.error('教材取得エラー:', error)
+        }
+    }
 
+    // 初回読み込み
+    loadLessons()
+
+    const addLesson = async (title) => {
+        try {
+            const response = await fetch('/lessons-json', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector('meta[name="csrf-token"]')
+                            ?.getAttribute('content')
+                },
+                body: JSON.stringify({
+                    title: title
+                })
+            })
+
+            if (!response.ok) {
+                throw new Error('教材の作成に失敗しました')
             }
 
+            const data = await response.json()
 
-            // =========================
-            // 公開状態
-            // =========================
+            const lesson = {
+                id: data.id,
+                title: data.title,
+                description: data.description,
+                created: data.created_at,
+                isPublished: Boolean(data.is_public),
 
-            // isPublished が存在しない
-            // 古い教材は非公開にする
-
-            if (lesson.isPublished === undefined) {
-
-                lesson.isPublished = false
-
+                pages: [
+                    {
+                        id: 1,
+                        title: 'ページ1',
+                        canvasData: null
+                    }
+                ]
             }
 
+            lessons.value.push(lesson)
 
             return lesson
 
-        })
-    )
-
-
-    // =========================
-    // 保存
-    // =========================
-
-    const save = () => {
-
-        localStorage.setItem(
-            'lessons',
-            JSON.stringify(lessons.value)
-        )
-
-    }
-
-
-    // =========================
-    // 教材追加
-    // =========================
-
-    const addLesson = (title) => {
-
-        const lesson = {
-
-            id: Date.now(),
-
-            title,
-
-            created:
-                new Date()
-                    .toLocaleDateString(),
-
-            // 新しく作った教材は非公開
-            isPublished: false,
-
-            pages: [
-                {
-                    id: 1,
-                    title: 'ページ1',
-                    canvasData: null
-                }
-            ]
-
+        } catch (error) {
+            console.error('教材作成エラー:', error)
         }
-
-
-        lessons.value.push(lesson)
-
-        save()
-
-        return lesson
-
     }
 
+    const renameLesson = async (id, newTitle) => {
+        try {
+            newTitle = newTitle.trim()
 
-    // =========================
-    // 教材名変更
-    // =========================
+            if (!newTitle) return
 
-    const renameLesson = (id, newTitle) => {
-
-        const lesson = lessons.value.find(
-            lesson => lesson.id === id
-        )
-
-        if (!lesson) return
-
-        newTitle = newTitle.trim()
-
-        if (!newTitle) return
-
-        lesson.title = newTitle
-
-        save()
-
-    }
-
-
-    // =========================
-    // 教材複製
-    // =========================
-
-    const duplicateLesson = (id) => {
-
-        const original = lessons.value.find(
-            lesson => lesson.id === id
-        )
-
-        if (!original) return
-
-
-        const copy = JSON.parse(
-            JSON.stringify(original)
-        )
-
-
-        copy.id = Date.now()
-
-        copy.title =
-            `${original.title}（コピー）`
-
-        copy.created =
-            new Date().toLocaleDateString()
-
-
-        copy.pages =
-            copy.pages.map(page => ({
-                ...page,
-                id: Date.now() + Math.random()
-            }))
-
-
-        lessons.value.push(copy)
-
-        save()
-
-        return copy
-
-    }
-
-
-    // =========================
-    // 削除
-    // =========================
-
-    const deleteLesson = (id) => {
-
-        lessons.value =
-            lessons.value.filter(
-                lesson =>
-                    lesson.id !== id
+            const response = await fetch(
+                `/lessons-json/${id}`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector(
+                                    'meta[name="csrf-token"]'
+                                )
+                                ?.getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        title: newTitle
+                    })
+                }
             )
 
-        save()
+            if (!response.ok) {
+                throw new Error(
+                    '教材名の変更に失敗しました'
+                )
+            }
 
+            const data = await response.json()
+
+            const lesson = lessons.value.find(
+                lesson => lesson.id === id
+            )
+
+            if (lesson) {
+                lesson.title = data.title
+            }
+
+        } catch (error) {
+            console.error(
+                '教材名変更エラー:',
+                error
+            )
+        }
     }
 
+    const duplicateLesson = async (id) => {
+        try {
+            const response = await fetch(
+                `/lessons-json/${id}/duplicate`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector(
+                                    'meta[name="csrf-token"]'
+                                )
+                                ?.getAttribute('content')
+                    }
+                }
+            )
 
-    // =========================
-    // 取得
-    // =========================
+            if (!response.ok) {
+                throw new Error(
+                    '教材の複製に失敗しました'
+                )
+            }
+
+            const data = await response.json()
+
+            const lesson = {
+                id: data.id,
+                title: data.title,
+                description: data.description,
+                created: data.created_at,
+                isPublished: Boolean(data.is_public),
+
+                pages: [
+                    {
+                        id: 1,
+                        title: 'ページ1',
+                        canvasData: null
+                    }
+                ]
+            }
+
+            lessons.value.push(lesson)
+
+            return lesson
+
+        } catch (error) {
+            console.error(
+                '教材複製エラー:',
+                error
+            )
+        }
+    }
+
+    const deleteLesson = async (id) => {
+        try {
+            const response = await fetch(
+                `/lessons-json/${id}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector(
+                                    'meta[name="csrf-token"]'
+                                )
+                                ?.getAttribute('content')
+                    }
+                }
+            )
+
+            if (!response.ok) {
+                throw new Error(
+                    '教材の削除に失敗しました'
+                )
+            }
+
+            lessons.value =
+                lessons.value.filter(
+                    lesson => lesson.id !== id
+                )
+
+        } catch (error) {
+            console.error(
+                '教材削除エラー:',
+                error
+            )
+        }
+    }
 
     const getLesson = (id) => {
-
         return lessons.value.find(
-            lesson =>
-                lesson.id === id
-        )
-
-    }
-
-    // 教材の公開・非公開
-    const togglePublish = (id) => {
-
-        const lesson = lessons.value.find(
             lesson => lesson.id === id
         )
-
-        if (!lesson) return
-
-        lesson.isPublished =
-            !lesson.isPublished
-
-        save()
     }
 
+    const togglePublish = async (id) => {
+        try {
+            const response = await fetch(
+                `/lessons-json/${id}/publish`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector(
+                                    'meta[name="csrf-token"]'
+                                )
+                                ?.getAttribute('content')
+                    }
+                }
+            )
+
+            if (!response.ok) {
+                throw new Error(
+                    '公開状態の変更に失敗しました'
+                )
+            }
+
+            const data = await response.json()
+
+            const lesson = lessons.value.find(
+                lesson => lesson.id === id
+            )
+
+            if (lesson) {
+                lesson.isPublished =
+                    Boolean(data.is_public)
+            }
+
+        } catch (error) {
+            console.error(
+                '公開状態変更エラー:',
+                error
+            )
+        }
+    }
 
     return {
-
         lessons,
         addLesson,
         deleteLesson,
         getLesson,
         renameLesson,
         duplicateLesson,
-        togglePublish 
-
+        togglePublish
     }
-
 }

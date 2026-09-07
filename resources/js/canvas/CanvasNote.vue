@@ -265,20 +265,11 @@ const initCanvas = (el) => {
 
     // 初期ページ読み込み
     if (props.lesson?.pages?.length) {
-
-
         pages.loadCurrentPage()
-
-
     }
     else {
-
-
         canvas.addDefaultRect()
-
         history.init()
-
-
     }
 
 
@@ -305,44 +296,82 @@ const openCanvas = () => {
 |--------------------------------------------------------------------------
 */
 
-function saveLesson(showMessage = true) {
-
+async function saveLesson(showMessage = true) {
     if (!props.lesson) return
 
     pages.saveCurrentPage()
 
+    try {
 
-    const lessons =
-        JSON.parse(
-            localStorage.getItem('lessons') || '[]'
+        const response = await fetch(
+            `/lessons-json/${props.lesson.id}/canvas`,
+            {
+                method: 'PUT',
+
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                },
+
+                body: JSON.stringify({
+                    pages:
+                        props.lesson.pages.map(
+                            (page, index) => ({
+                                page_number: index + 1,
+                                content: page.canvasData
+                            })
+                        )
+                })
+            }
         )
 
+        if (!response.ok) {
+            throw new Error(
+                'Canvasの保存に失敗しました'
+            )
+        }
 
-    const index =
-        lessons.findIndex(
-            item => item.id === props.lesson.id
+        // ひとまずlocalStorage保存も残しておく
+        const lessons =
+            JSON.parse(
+                localStorage.getItem('lessons') || '[]'
+            )
+
+        const index =
+            lessons.findIndex(
+                item =>
+                    item.id === props.lesson.id
+            )
+
+        if (index !== -1) {
+            lessons[index] = props.lesson
+        }
+
+        localStorage.setItem(
+            'lessons',
+            JSON.stringify(lessons)
         )
 
+        if (showMessage) {
+            alert('教材を保存しました')
+        }
 
-    if (index !== -1) {
+    } catch (error) {
 
-        lessons[index] = props.lesson
+        console.error(
+            'Canvas保存エラー:',
+            error
+        )
 
+        throw error
     }
-
-
-    localStorage.setItem(
-        'lessons',
-        JSON.stringify(lessons)
-    )
-
-
-    if (showMessage) {
-
-        alert('教材を保存しました')
-
-    }
-
 }
 
 const autoSave =

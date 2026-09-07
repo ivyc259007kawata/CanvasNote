@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
+use App\Models\CanvasElement;
 
 class Lesson extends Model
 {
@@ -12,4 +14,14 @@ class Lesson extends Model
         'description',
         'is_public',
     ];
+
+    public function teacher()
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    public function canvasElements()
+    {
+        return $this->hasMany(CanvasElement::class);
+    }
 }

@@ -8,11 +8,8 @@ class CanvasElement extends Model
 {
     protected $fillable = [
         'lesson_id',
+        'page_number',
         'element_type',
-        'x',
-        'y',
-        'width',
-        'height',
         'content',
     ];
 

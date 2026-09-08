@@ -101,8 +101,7 @@ export function useLessonPages(lesson, canvas, history) {
     // ==========================================
     // ページ読み込み
     // ==========================================
-    const loadCurrentPage = () => {
-
+    const loadCurrentPage = async () => {
         const fc = canvas.canvas.value
 
         if (!fc || !lesson.value) return
@@ -112,24 +111,25 @@ export function useLessonPages(lesson, canvas, history) {
 
         if (!page) return
 
+        // 現在のCanvasをクリア
         fc.clear()
 
+        // 保存されたCanvasデータがある場合
         if (page.canvasData) {
+            try {
+                await fc.loadFromJSON(page.canvasData)
 
-            fc.loadFromJSON(
-                page.canvasData,
-                () => {
-                    fc.requestRenderAll()
-                }
-            )
-
+                fc.requestRenderAll()
+            } catch (error) {
+                console.error(
+                    'Canvas復元エラー:',
+                    error
+                )
+            }
         }
         else {
-
             fc.requestRenderAll()
-
         }
-
     }
 
 

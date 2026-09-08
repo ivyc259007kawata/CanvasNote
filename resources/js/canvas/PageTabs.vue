@@ -1,36 +1,17 @@
 <template>
     <div class="page-tabs">
 
-        <div
-            v-for="(page, index) in pages"
-            :key="page.id"
-            class="page-item"
-            draggable="true"
+        <div v-for="(page, index) in pages" :key="page.id" class="page-item" :draggable="!readOnly"
+            @dragstart="!readOnly && dragStart(index)" @dragover.prevent @drop="!readOnly && drop(index)">
 
-            @dragstart="dragStart(index)"
-            @dragover.prevent
-            @drop="drop(index)"
-        >
-
-            <button
-                class="page-button"
-                :class="{ active: currentPage === index }"
-
-                @click="emit('change', index)"
-                @dblclick="rename(index)"
-            >
+            <button class="page-button" :class="{ active: currentPage === index }" @click="emit('change', index)"
+                @dblclick="!readOnly && rename(index)">
 
                 <div class="thumbnail">
 
-                    <img
-                        v-if="page.thumbnail"
-                        :src="page.thumbnail"
-                    >
+                    <img v-if="page.thumbnail" :src="page.thumbnail">
 
-                    <div
-                        v-else
-                        class="empty-thumbnail"
-                    >
+                    <div v-else class="empty-thumbnail">
                         No Image
                     </div>
 
@@ -47,26 +28,16 @@
             </button>
 
 
-            <button
-                class="delete-button"
-                @click="emit('delete', index)"
-            >
-
+            <button v-if="!readOnly" class="delete-button" @click="emit('delete', index)">
                 ✕
-
             </button>
 
 
         </div>
 
 
-        <button
-            class="add-button"
-            @click="emit('add')"
-        >
-
+        <button v-if="!readOnly" class="add-button" @click="emit('add')">
             ＋ ページ追加
-
         </button>
 
 
@@ -81,11 +52,9 @@ import { ref } from 'vue'
 
 
 const props = defineProps({
-
-    pages:Array,
-
-    currentPage:Number
-
+    pages: Array,
+    currentPage: Number,
+    readOnly: Boolean
 })
 
 
@@ -110,7 +79,7 @@ const dragIndex = ref(null)
 
 
 // ドラッグ開始
-const dragStart = (index)=>{
+const dragStart = (index) => {
 
     dragIndex.value = index
 
@@ -119,14 +88,14 @@ const dragStart = (index)=>{
 
 
 // ドロップ
-const drop = (index)=>{
+const drop = (index) => {
 
 
-    if(dragIndex.value === null)
+    if (dragIndex.value === null)
         return
 
 
-    if(dragIndex.value === index)
+    if (dragIndex.value === index)
         return
 
 
@@ -135,9 +104,9 @@ const drop = (index)=>{
         'move',
         {
 
-            oldIndex:dragIndex.value,
+            oldIndex: dragIndex.value,
 
-            newIndex:index
+            newIndex: index
 
         }
     )
@@ -151,7 +120,7 @@ const drop = (index)=>{
 
 
 // 名前変更
-const rename = (index)=>{
+const rename = (index) => {
 
 
     const title = prompt(
@@ -163,7 +132,7 @@ const rename = (index)=>{
     )
 
 
-    if(title === null)
+    if (title === null)
         return
 
 
@@ -190,187 +159,183 @@ const rename = (index)=>{
 
 
 <style scoped>
+.page-tabs {
 
+    display: flex;
 
-.page-tabs{
+    flex-wrap: wrap;
 
-    display:flex;
+    gap: 10px;
 
-    flex-wrap:wrap;
-
-    gap:10px;
-
-    margin-bottom:16px;
+    margin-bottom: 16px;
 
 }
 
 
 
-.page-item{
+.page-item {
 
-    display:flex;
+    display: flex;
 
-    align-items:center;
+    align-items: center;
 
-    gap:4px;
-
-}
-
-
-
-.page-button{
-
-    width:180px;
-
-    display:flex;
-
-    flex-direction:column;
-
-    align-items:center;
-
-    gap:8px;
-
-    padding:10px;
-
-    border:1px solid #ccc;
-
-    border-radius:8px;
-
-    background:white;
-
-    cursor:pointer;
+    gap: 4px;
 
 }
 
 
 
-.page-button:hover{
+.page-button {
 
-    background:#f3f4f6;
+    width: 180px;
 
-}
+    display: flex;
 
+    flex-direction: column;
 
+    align-items: center;
 
-.page-button.active{
+    gap: 8px;
 
-    background:#2563eb;
+    padding: 10px;
 
-    color:white;
+    border: 1px solid #ccc;
 
-    border-color:#2563eb;
+    border-radius: 8px;
 
-}
+    background: white;
 
-
-
-.thumbnail{
-
-    width:150px;
-
-    height:90px;
-
-    border:1px solid #ccc;
-
-    overflow:hidden;
-
-    background:white;
+    cursor: pointer;
 
 }
 
 
 
-.thumbnail img{
+.page-button:hover {
 
-    width:100%;
-
-    height:100%;
-
-    object-fit:cover;
+    background: #f3f4f6;
 
 }
 
 
 
-.empty-thumbnail{
+.page-button.active {
 
-    width:100%;
+    background: #2563eb;
 
-    height:100%;
+    color: white;
 
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    color:#999;
-
-    font-size:12px;
+    border-color: #2563eb;
 
 }
 
 
 
-.title{
+.thumbnail {
 
-    font-size:14px;
+    width: 150px;
 
-    text-align:center;
+    height: 90px;
 
-}
+    border: 1px solid #ccc;
 
+    overflow: hidden;
 
-
-.delete-button{
-
-    width:24px;
-
-    height:24px;
-
-    border:none;
-
-    border-radius:50%;
-
-    background:#ef4444;
-
-    color:white;
-
-    cursor:pointer;
+    background: white;
 
 }
 
 
 
-.delete-button:hover{
+.thumbnail img {
 
-    background:#dc2626;
+    width: 100%;
 
-}
+    height: 100%;
 
-
-
-.add-button{
-
-    padding:8px 14px;
-
-    border:1px dashed #999;
-
-    border-radius:6px;
-
-    background:white;
-
-    cursor:pointer;
+    object-fit: cover;
 
 }
 
 
 
-.add-button:hover{
+.empty-thumbnail {
 
-    background:#f3f4f6;
+    width: 100%;
+
+    height: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    color: #999;
+
+    font-size: 12px;
 
 }
 
 
+
+.title {
+
+    font-size: 14px;
+
+    text-align: center;
+
+}
+
+
+
+.delete-button {
+
+    width: 24px;
+
+    height: 24px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background: #ef4444;
+
+    color: white;
+
+    cursor: pointer;
+
+}
+
+
+
+.delete-button:hover {
+
+    background: #dc2626;
+
+}
+
+
+
+.add-button {
+
+    padding: 8px 14px;
+
+    border: 1px dashed #999;
+
+    border-radius: 6px;
+
+    background: white;
+
+    cursor: pointer;
+
+}
+
+
+
+.add-button:hover {
+
+    background: #f3f4f6;
+
+}
 </style>

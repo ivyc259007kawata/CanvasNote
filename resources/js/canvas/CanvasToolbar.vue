@@ -1,5 +1,5 @@
 <template>
-    <div class="toolbar">
+    <div class="toolbar" :class="{ 'read-only': readOnly }">
 
         <!-- ツール -->
 
@@ -8,25 +8,26 @@
         </button>
 
 
-        <button @click="$emit('update:tool', 'rectangle')" :class="{ active: tool === 'rectangle' }">
+        <button :disabled="readOnly" @click="$emit('update:tool', 'rectangle')"
+            :class="{ active: tool === 'rectangle' }">
             ▭ 四角
         </button>
 
 
-        <button @click="$emit('update:tool', 'text')" :class="{ active: tool === 'text' }">
+        <button :disabled="readOnly" @click="$emit('update:tool', 'text')" :class="{ active: tool === 'text' }">
             📝 テキスト
         </button>
 
 
-        <button @click="$emit('update:tool', 'pen')" :class="{ active: tool === 'pen' }">
+        <button :disabled="readOnly" @click="$emit('update:tool', 'pen')" :class="{ active: tool === 'pen' }">
             ✏ ペン
         </button>
 
-        <button @click="$emit('update:tool', 'marker')" :class="{ active: tool === 'marker' }">
+        <button :disabled="readOnly" @click="$emit('update:tool', 'marker')" :class="{ active: tool === 'marker' }">
             🖍 蛍光ペン
         </button>
 
-        <button @click="$emit('update:tool', 'eraser')" :class="{ active: tool === 'eraser' }">
+        <button :disabled="readOnly" @click="$emit('update:tool', 'eraser')" :class="{ active: tool === 'eraser' }">
             🧽 消しゴム
         </button>
 
@@ -42,7 +43,7 @@
 
             🎨
 
-            <input type="color" :value="color" @input="$emit(
+            <input type="color" :value="color" :disabled="readOnly" @input="$emit(
                 'update:color',
                 $event.target.value
             )" />
@@ -61,7 +62,7 @@
 
             太さ
 
-            <input type="range" min="1" max="30" :value="brushWidth" @input="$emit(
+            <input type="range" min="1" max="30" :value="brushWidth" :disabled="readOnly" @input="$emit(
                 'update:brushWidth',
                 Number($event.target.value)
             )" />
@@ -81,32 +82,30 @@
 
         <!-- ファイル操作 -->
 
-        <button @click="$emit('image')">
+        <button :disabled="readOnly" @click="$emit('image')">
             🖼 画像
         </button>
 
 
-        <button @click="$emit('undo')">
+        <button :disabled="readOnly" @click="$emit('undo')">
             ↩ Undo
         </button>
 
 
-        <button @click="$emit('redo')">
+        <button :disabled="readOnly" @click="$emit('redo')">
             ↪ Redo
         </button>
 
 
-        <button @click="$emit('open')">
+        <button :disabled="readOnly" @click="$emit('open')">
             📂 開く
         </button>
 
-
-        <button @click="$emit('save')">
+        <button :disabled="readOnly" @click="$emit('save')">
             💾 保存
         </button>
 
-
-        <button @click="$emit('lesson-save')">
+        <button :disabled="readOnly" @click="$emit('lesson-save')">
             📚 教材保存
         </button>
 
@@ -117,40 +116,24 @@
 
 
 <script setup>
-
 defineProps({
-
     tool: String,
-
     color: String,
-
-    brushWidth: Number
-
+    brushWidth: Number,
+    readOnly: Boolean
 })
 
-
 defineEmits([
-
     'update:tool',
-
     'update:color',
-
     'update:brushWidth',
-
     'image',
-
     'undo',
-
     'redo',
-
     'open',
-
     'save',
-
     'lesson-save'
-
 ])
-
 </script>
 
 
@@ -270,5 +253,19 @@ input[type="range"] {
 
     margin: 0 4px;
 
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button:disabled:hover {
+    background: #3b82f6;
+}
+
+input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>

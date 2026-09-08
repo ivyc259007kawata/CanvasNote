@@ -2,13 +2,14 @@
     <div class="canvas-page">
 
         <!-- Toolbar -->
-        <CanvasToolbar :tool="state.tool" :color="state.color" :brushWidth="state.brushWidth" @update:tool="(tool) => {
+        <CanvasToolbar :tool="state.tool" :color="state.color" :brushWidth="state.brushWidth" :readOnly="isReadOnly"
+            @update:tool="(tool) => {
 
-            state.tool = tool
+                state.tool = tool
 
-            canvas.setTool(tool)
+                canvas.setTool(tool)
 
-        }" @update:color="(color) => {
+            }" @update:color="(color) => {
 
             state.color = color
 
@@ -35,8 +36,9 @@
         <SaveDialog :show="save.showSaveDialog.value" @canvas="save.saveAsCanvas" @png="() => save.saveAsImage('png')"
             @jpg="() => save.saveAsImage('jpeg')" @close="save.closeSaveDialog" />
 
-        <PageTabs :pages="props.lesson.pages" :currentPage="pages.currentPage.value" @change="pages.changePage"
-            @add="pages.addPage" @delete="pages.deletePage" @rename="pages.renamePage" @move="pages.movePage" />
+        <PageTabs :pages="props.lesson.pages" :currentPage="pages.currentPage.value" :readOnly="isReadOnly"
+            @change="pages.changePage" @add="pages.addPage" @delete="pages.deletePage" @rename="pages.renamePage"
+            @move="pages.movePage" />
 
         <div class="layout">
 
@@ -47,9 +49,10 @@
 
 
             <!-- Property -->
-            <PropertyPanel :activeObject="panel.activeObject.value" :fillColor="panel.fillColor.value"
-                :left="panel.left.value" :top="panel.top.value" :objectWidth="panel.objectWidth.value"
-                :objectHeight="panel.objectHeight.value" :angle="panel.angle.value" @update:fillColor="
+            <PropertyPanel v-if="!isReadOnly" :activeObject="panel.activeObject.value"
+                :fillColor="panel.fillColor.value" :left="panel.left.value" :top="panel.top.value"
+                :objectWidth="panel.objectWidth.value" :objectHeight="panel.objectHeight.value"
+                :angle="panel.angle.value" @update:fillColor="
                     panel.fillColor.value = $event
                     " @update:left="
                         panel.left.value = $event
@@ -91,6 +94,11 @@ const props = defineProps({
 })
 
 const lesson = computed(() => props.lesson)
+
+const isReadOnly = computed(() => {
+    return props.lesson?.canEdit === false
+})
+
 
 
 import CanvasToolbar from './CanvasToolbar.vue'
@@ -250,37 +258,36 @@ const initCanvas = async (el) => {
     canvas.initCanvas()
 
 
-    // Property Panel
-    panel.startWatchers(watch)
-    panel.bindCanvasEvents()
+    // 自分の教材だけ編集機能を有効にする
+    if (!isReadOnly.value) {
+        // Property Panel
+        panel.startWatchers(watch)
+        panel.bindCanvasEvents()
 
+        // Mouse Event
+        events.bindEvents()
 
-    // Mouse Event
-    events.bindEvents()
-
-
-    // Keyboard
-    keyboard.bindKeyboard()
+        // Keyboard
+        keyboard.bindKeyboard()
+    }
 
 
     // 初期ページ読み込み
     await pages.loadPagesFromServer()
 
     if (props.lesson?.pages?.length) {
-
-        pages.loadCurrentPage()
-
+        await pages.loadCurrentPage()
     }
     else {
-
         canvas.addDefaultRect()
-
         history.init()
-
     }
 
     // 自動保存開始
-    autoSave.start()
+    // 自分の教材だけ自動保存
+    if (!isReadOnly.value) {
+        autoSave.start()
+    }
 }
 
 /*
@@ -302,6 +309,11 @@ const openCanvas = () => {
 
 async function saveLesson(showMessage = true) {
     if (!props.lesson) return
+
+    // 他教師の教材は保存しない
+    if (isReadOnly.value) {
+        return
+    }
 
     pages.saveCurrentPage()
 
@@ -347,6 +359,7 @@ async function saveLesson(showMessage = true) {
             JSON.parse(
                 localStorage.getItem('lessons') || '[]'
             )
+
 
         const index =
             lessons.findIndex(
@@ -408,15 +421,14 @@ watch(
 */
 
 onUnmounted(() => {
-
     autoSave.stop()
 
-    keyboard.unbindKeyboard()
-
-    events.unbindEvents()
+    if (!isReadOnly.value) {
+        keyboard.unbindKeyboard()
+        events.unbindEvents()
+    }
 
     canvas.destroyCanvas()
-
 })
 
 

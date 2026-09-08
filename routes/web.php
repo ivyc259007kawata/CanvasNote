@@ -30,10 +30,11 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware('auth')->get('/lessons-json', function () {
-    $lessons = \App\Models\Lesson::where(
-        'teacher_id',
-        auth()->id()
-    )->get();
+    $lessons = \App\Models\Lesson::with('teacher')->get();
+
+    $lessons->each(function ($lesson) {
+        $lesson->can_edit = $lesson->teacher_id === auth()->id();
+    });
 
     return response()->json($lessons);
 });

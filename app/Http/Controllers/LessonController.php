@@ -91,17 +91,30 @@ class LessonController extends Controller
 
     public function apiDuplicate(Lesson $lesson)
     {
-        // 自分の教材か確認
-        if ($lesson->teacher_id !== Auth::id()) {
+        if (Auth::user()->role !== 'teacher') {
             abort(403);
         }
 
+        // 教材本体をコピー
         $copy = Lesson::create([
             'teacher_id' => Auth::id(),
             'title' => $lesson->title . '（コピー）',
             'description' => $lesson->description,
             'is_public' => false,
         ]);
+
+        // Canvasのページもコピー
+        $pages = $lesson->canvasElements()
+            ->orderBy('page_number')
+            ->get();
+
+        foreach ($pages as $page) {
+            $copy->canvasElements()->create([
+                'page_number' => $page->page_number,
+                'element_type' => $page->element_type,
+                'content' => $page->content,
+            ]);
+        }
 
         return response()->json($copy, 201);
     }
@@ -140,8 +153,8 @@ class LessonController extends Controller
 
     public function apiGetCanvas(Lesson $lesson)
     {
-        // 自分の教材か確認
-        if ($lesson->teacher_id !== Auth::id()) {
+        // 教師なら教材のCanvasを閲覧できる
+        if (Auth::user()->role !== 'teacher') {
             abort(403);
         }
 

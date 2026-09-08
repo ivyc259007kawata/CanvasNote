@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { StaticCanvas } from 'fabric'
 
 export function useLessons() {
 
@@ -15,22 +16,75 @@ export function useLessons() {
 
             const data = await response.json()
 
-            lessons.value = data.map(lesson => ({
-                id: lesson.id,
-                title: lesson.title,
-                description: lesson.description,
-                created: lesson.created_at,
-                isPublished: Boolean(lesson.is_public),
+            const lessonData = await Promise.all(
+                data.map(async (lesson) => {
 
-                // Canvas側との互換性を保つ
-                pages: [
-                    {
-                        id: 1,
-                        title: 'ページ1',
-                        canvasData: null
+                    // Canvasデータを取得
+                    let pages = []
+
+                    try {
+                        const canvasResponse = await fetch(
+                            `/lessons-json/${lesson.id}/canvas`
+                        )
+
+                        if (canvasResponse.ok) {
+                            const canvasData = await canvasResponse.json()
+
+                            if (canvasData.pages?.length) {
+
+                                pages = await Promise.all(
+                                    canvasData.pages.map(async (page) => {
+
+                                        // サムネイルを作成
+                                        const thumbnail =
+                                            await createThumbnail(page.content)
+
+                                        return {
+                                            id: page.id,
+                                            title: `ページ${page.page_number}`,
+                                            canvasData: page.content,
+                                            thumbnail: thumbnail
+                                        }
+                                    })
+                                )
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error(
+                            `教材ID ${lesson.id} のCanvas取得エラー:`,
+                            error
+                        )
                     }
-                ]
-            }))
+
+                    // Canvasデータがない教材
+                    if (pages.length === 0) {
+                        pages = [
+                            {
+                                id: 1,
+                                title: 'ページ1',
+                                canvasData: null,
+                                thumbnail: null
+                            }
+                        ]
+                    }
+
+                    return {
+                        id: lesson.id,
+                        title: lesson.title,
+                        description: lesson.description,
+                        created: lesson.created_at,
+                        isPublished: Boolean(lesson.is_public),
+
+                        // 自分の教材なら編集可能
+                        canEdit: Boolean(lesson.can_edit),
+
+                        pages
+                    }
+                })
+            )
+
+            lessons.value = lessonData
 
         } catch (error) {
             console.error('教材取得エラー:', error)
@@ -275,6 +329,52 @@ export function useLessons() {
                 '公開状態変更エラー:',
                 error
             )
+        }
+    }
+
+    // Canvasデータからサムネイルを作成
+    const createThumbnail = async (canvasData) => {
+        if (!canvasData) {
+            return null
+        }
+
+        try {
+            // 一時的なCanvasを作る
+            const canvasElement = document.createElement('canvas')
+
+            canvasElement.width = 1000
+            canvasElement.height = 650
+
+            const tempCanvas = new StaticCanvas(canvasElement, {
+                width: 1000,
+                height: 650,
+                backgroundColor: '#ffffff'
+            })
+
+            // Canvasデータを読み込む
+            const data =
+                typeof canvasData === 'string'
+                    ? JSON.parse(canvasData)
+                    : canvasData
+
+            await tempCanvas.loadFromJSON(data)
+
+            tempCanvas.renderAll()
+
+            // サムネイル画像を作る
+            const thumbnail = tempCanvas.toDataURL({
+                format: 'png',
+                quality: 0.5,
+                multiplier: 0.2
+            })
+
+            tempCanvas.dispose()
+
+            return thumbnail
+
+        } catch (error) {
+            console.error('サムネイル作成エラー:', error)
+            return null
         }
     }
 

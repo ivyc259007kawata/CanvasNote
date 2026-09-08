@@ -87,4 +87,47 @@ Route::middleware('auth')->post(
     [LessonController::class, 'apiDuplicate']
 );
 
+
+// クラス管理
+Route::middleware('auth')->get(
+    '/classes-json',
+    [\App\Http\Controllers\ClassController::class, 'index']
+);
+
+Route::middleware('auth')->post(
+    '/classes-json',
+    [\App\Http\Controllers\ClassController::class, 'store']
+);
+
+Route::middleware('auth')->get(
+    '/classes-json/{class}',
+    [\App\Http\Controllers\ClassController::class, 'show']
+);
+
+Route::middleware('auth')->get(
+    '/students-json',
+    [\App\Http\Controllers\ClassController::class, 'students']
+);
+
+Route::middleware('auth')->post(
+    '/classes-json/{class}/students',
+    [\App\Http\Controllers\ClassController::class, 'addStudent']
+);
+
+Route::middleware('auth')->get(
+    '/classes-json/{class}/lessons',
+    [\App\Http\Controllers\ClassController::class, 'lessons']
+);
+
+Route::middleware('auth')->get(
+    '/classes-json/{class}/available-lessons',
+    [\App\Http\Controllers\ClassController::class, 'availableLessons']
+);
+
+Route::middleware('auth')->post(
+    '/classes-json/{class}/lessons',
+    [\App\Http\Controllers\ClassController::class, 'addLesson']
+);
+
+
 require __DIR__ . '/auth.php';

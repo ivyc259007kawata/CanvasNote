@@ -17,6 +17,7 @@
             </h2>
 
 
+
             <button @click="createLesson">
                 ＋ 新しい教材
             </button>
@@ -556,5 +557,4 @@ button:hover {
 .unpublish-button:hover {
     background: #4b5563;
 }
-
 </style>

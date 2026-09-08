@@ -47,4 +47,20 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+
+    /**
+     * 所属しているクラス
+     */
+    public function schoolClasses()
+    {
+        return $this->belongsToMany(
+            SchoolClass::class,
+            'class_users',
+            'user_id',
+            'class_id'
+        )->withTimestamps();
+    }
+
+
 }

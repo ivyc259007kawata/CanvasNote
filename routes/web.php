@@ -105,6 +105,26 @@ Route::middleware('auth')->get(
 );
 
 Route::middleware('auth')->get(
+    '/student-lessons-json',
+    [\App\Http\Controllers\ClassController::class, 'studentLessons']
+);
+
+Route::middleware('auth')->post(
+    '/student-lessons-json/{lesson}/submission',
+    [\App\Http\Controllers\SubmissionController::class, 'save']
+);
+
+Route::middleware('auth')->post(
+    '/student-lessons-json/{lesson}/submission/submit',
+    [\App\Http\Controllers\SubmissionController::class, 'submit']
+);
+
+Route::middleware('auth')->get(
+    '/lessons/{lesson}/submissions',
+    [\App\Http\Controllers\SubmissionController::class, 'index']
+);
+
+Route::middleware('auth')->get(
     '/students-json',
     [\App\Http\Controllers\ClassController::class, 'students']
 );

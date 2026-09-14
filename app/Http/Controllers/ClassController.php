@@ -230,4 +230,23 @@ class ClassController extends Controller
             'message' => '教材を追加しました'
         ], 201);
     }
+
+    public function studentLessons()
+    {
+        if (Auth::user()->role !== 'student') {
+            abort(403);
+        }
+
+        $student = Auth::user();
+
+        $lessons = $student->schoolClasses()
+            ->with('lessons')
+            ->get()
+            ->pluck('lessons')
+            ->flatten()
+            ->unique('id')
+            ->values();
+
+        return response()->json($lessons);
+    }
 }

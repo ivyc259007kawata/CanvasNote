@@ -10,7 +10,7 @@
 
             <div class="lesson-info">
                 <span class="lesson-label">
-                    📖 教材閲覧
+                    📖 {{ isAnswerMode ? '回答中' : '教材閲覧' }}
                 </span>
 
                 <h1>
@@ -18,7 +18,35 @@
                 </h1>
             </div>
 
+            <button v-if="!isAnswerMode" class="answer-button" @click="startAnswer">
+                ✏️ 回答する
+            </button>
+
+            <template v-else>
+                <button class="save-button" @click="saveAnswer">
+                    💾 回答を保存
+                </button>
+
+                <button class="submit-button" @click="submitAnswer">
+                    📤 提出する
+                </button>
+
+                <button class="cancel-button" @click="cancelAnswer">
+                    閲覧に戻る
+                </button>
+            </template>
+
         </header>
+
+        <!-- 回答用ツールバー -->
+        <div v-if="isAnswerMode" class="answer-toolbar">
+            <button @click="setTool('pen')">✏️ ペン</button>
+            <button @click="setTool('marker')">🖍 マーカー</button>
+            <button @click="setTool('rectangle')">▭ 四角</button>
+            <button @click="setTool('text')">📝 テキスト</button>
+            <button @click="setTool('eraser')">🧽 消しゴム</button>
+            <button @click="setTool('select')">↖ 選択</button>
+        </div>
 
 
         <!-- ページタブ -->
@@ -65,7 +93,12 @@ import {
     nextTick
 } from 'vue'
 
-import { Canvas } from 'fabric'
+import {
+    Canvas,
+    Rect,
+    IText,
+    PencilBrush
+} from 'fabric'
 
 
 const props = defineProps({
@@ -96,6 +129,10 @@ const lessonTitle = ref(
 const loading = ref(true)
 
 const error = ref(null)
+
+const isAnswerMode = ref(false)
+
+const answerTool = ref('select')
 
 
 /*
@@ -184,7 +221,6 @@ const loadLesson = async () => {
  * Fabric.js Canvas作成
  */
 const initCanvas = () => {
-
     fabricCanvas.value =
         new Canvas(
             canvasEl.value,
@@ -195,6 +231,10 @@ const initCanvas = () => {
             }
         )
 
+    fabricCanvas.value.on(
+        'mouse:down',
+        handleCanvasClick
+    )
 }
 
 
@@ -220,27 +260,24 @@ const loadCurrentPage = async () => {
 
     fc.clear()
 
-    if (page.canvasData) {
+    const canvasData = isAnswerMode.value
+        ? (page.answerData ?? page.canvasData)
+        : page.canvasData
 
-        console.log(
-            'Canvasデータ:',
-            page.canvasData
-        )
-
-        await fc.loadFromJSON(
-            page.canvasData
-        )
+    if (canvasData) {
+        console.log('Canvasデータ:', canvasData)
+        await fc.loadFromJSON(canvasData)
     }
 
-    // 生徒側では編集できないようにする
-    fc.getObjects().forEach(object => {
-
-        object.set({
-            selectable: false,
-            evented: false
+    // 閲覧モードでは編集できないようにする
+    if (!isAnswerMode.value) {
+        fc.getObjects().forEach(object => {
+            object.set({
+                selectable: false,
+                evented: false
+            })
         })
-
-    })
+    }
 
     fc.discardActiveObject()
 
@@ -265,12 +302,235 @@ const loadCurrentPage = async () => {
 /*
  * ページ変更
  */
+
+const saveCurrentAnswerPage = () => {
+    if (!isAnswerMode.value) return
+
+    const fc = fabricCanvas.value
+    if (!fc) return
+
+    const page = pages.value[currentPage.value]
+    if (!page) return
+
+    page.answerData = fc.toJSON()
+}
+
 const changePage = async (index) => {
+    saveCurrentAnswerPage()
 
     currentPage.value = index
 
     await loadCurrentPage()
+}
 
+const saveAnswer = async () => {
+    // 今いるページの最新状態を保存
+    saveCurrentAnswerPage()
+
+    try {
+        const pagesData = pages.value.map((page, index) => ({
+            page_number: index + 1,
+            content: page.answerData ?? page.canvasData
+        }))
+
+        const response = await fetch(
+            `/student-lessons-json/${props.lesson.id}/submission`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content')
+                },
+                body: JSON.stringify({
+                    pages: pagesData
+                })
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error('回答の保存に失敗しました。')
+        }
+
+        const data = await response.json()
+
+        console.log('回答保存成功:', data)
+
+        alert('回答を保存しました。')
+
+    } catch (err) {
+        console.error('回答保存エラー:', err)
+
+        alert(err.message)
+    }
+}
+
+const submitAnswer = async () => {
+    try {
+        const response = await fetch(
+            `/student-lessons-json/${props.lesson.id}/submission/submit`,
+            {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content')
+                }
+            }
+        )
+
+        if (!response.ok) {
+            const data = await response.json()
+            throw new Error(
+                data.message || '回答の提出に失敗しました。'
+            )
+        }
+
+        const data = await response.json()
+
+        console.log('回答提出成功:', data)
+
+        alert('回答を提出しました。')
+
+        // 回答モードを終了
+        isAnswerMode.value = false
+
+        // 閲覧画面に戻す
+        await loadCurrentPage()
+
+    } catch (err) {
+        console.error('回答提出エラー:', err)
+
+        alert(err.message)
+    }
+}
+
+/*
+ * 生徒回答
+ */
+const startAnswer = () => {
+    isAnswerMode.value = true
+    answerTool.value = 'select'
+
+    if (fabricCanvas.value) {
+        fabricCanvas.value.isDrawingMode = false
+
+        fabricCanvas.value.getObjects().forEach(object => {
+            object.set({
+                selectable: false,
+                evented: false
+            })
+        })
+
+        fabricCanvas.value.requestRenderAll()
+    }
+}
+
+const cancelAnswer = () => {
+    isAnswerMode.value = false
+
+    if (fabricCanvas.value) {
+        fabricCanvas.value.isDrawingMode = false
+
+        fabricCanvas.value.getObjects().forEach(object => {
+            object.set({
+                selectable: false,
+                evented: false
+            })
+        })
+
+        fabricCanvas.value.discardActiveObject()
+        fabricCanvas.value.requestRenderAll()
+    }
+}
+
+const setTool = (tool) => {
+    if (!fabricCanvas.value) return
+
+    answerTool.value = tool
+
+    const fc = fabricCanvas.value
+
+    fc.isDrawingMode = false
+
+    // ペン
+    if (tool === 'pen') {
+        if (!fc.freeDrawingBrush) {
+            fc.freeDrawingBrush = new PencilBrush(fc)
+        }
+
+        fc.freeDrawingBrush.color = '#000000'
+        fc.freeDrawingBrush.width = 5
+        fc.isDrawingMode = true
+        return
+    }
+
+    // マーカー
+    if (tool === 'marker') {
+        if (!fc.freeDrawingBrush) {
+            fc.freeDrawingBrush = new PencilBrush(fc)
+        }
+
+        fc.freeDrawingBrush.color =
+            'rgba(255,255,0,0.4)'
+
+        fc.freeDrawingBrush.width = 25
+        fc.isDrawingMode = true
+        return
+    }
+
+    // その他
+    fc.requestRenderAll()
+}
+
+const handleCanvasClick = (event) => {
+    if (!isAnswerMode.value) return
+
+    const fc = fabricCanvas.value
+    if (!fc) return
+
+    const pointer = fc.getScenePoint(event.e)
+
+    // 四角
+    if (answerTool.value === 'rectangle') {
+        const rect = new Rect({
+            left: pointer.x,
+            top: pointer.y,
+            width: 120,
+            height: 120,
+            fill: '#dbeafe',
+            stroke: '#2563eb',
+            strokeWidth: 2
+        })
+
+        fc.add(rect)
+        fc.requestRenderAll()
+
+        answerTool.value = 'select'
+        return
+    }
+
+    // テキスト
+    if (answerTool.value === 'text') {
+        const text = new IText('回答', {
+            left: pointer.x,
+            top: pointer.y,
+            fontSize: 30,
+            fill: '#000000'
+        })
+
+        fc.add(text)
+        fc.setActiveObject(text)
+        text.enterEditing()
+        text.selectAll()
+
+        fc.requestRenderAll()
+
+        answerTool.value = 'select'
+    }
 }
 
 
@@ -420,5 +680,28 @@ canvas {
 
 .message.error {
     color: #dc2626;
+}
+
+.answer-toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.answer-toolbar button {
+    padding: 8px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+}
+
+.answer-toolbar button:hover {
+    background: #f3f4f6;
 }
 </style>

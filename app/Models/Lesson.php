@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\CanvasElement;
 use App\Models\SchoolClass;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Submission;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Lesson extends Model
 {
@@ -35,5 +37,12 @@ class Lesson extends Model
             'lesson_id',
             'class_id'
         )->withTimestamps();
+    }
+
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(
+            Submission::class
+        );
     }
 }

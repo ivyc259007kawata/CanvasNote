@@ -84,6 +84,10 @@
                         ✏ 編集
                     </button>
 
+                    <button @click="showSubmissions(lesson)">
+                        📋 提出状況
+                    </button>
+
                     <button @click="renameLessonTitle(lesson.id)">
                         📝 名前変更
                     </button>
@@ -257,7 +261,8 @@ const renameLessonTitle = (id) => {
 // =========================
 
 const emit = defineEmits([
-    'edit'
+    'edit',
+    'submissions'
 ])
 
 
@@ -272,6 +277,14 @@ const editLesson = (id) => {
         getLesson(id)
     )
 
+}
+
+const showSubmissions = (lesson) => {
+    console.log('提出状況を確認:', lesson)
+
+    emit('submissions', lesson)
+
+    console.log('submissionsイベントを送信しました')
 }
 
 </script>

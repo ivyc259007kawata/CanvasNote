@@ -20,16 +20,9 @@
 
                 <form method="POST" action="/logout">
 
-                    <input
-                        type="hidden"
-                        name="_token"
-                        :value="csrfToken"
-                    >
+                    <input type="hidden" name="_token" :value="csrfToken">
 
-                    <button
-                        type="submit"
-                        class="logout-button"
-                    >
+                    <button type="submit" class="logout-button">
                         ログアウト
                     </button>
 
@@ -55,55 +48,35 @@
                 <nav class="menu">
 
                     <!-- ホーム -->
-                    <button
-                        class="menu-item"
-                        :class="{ active: page === 'dashboard' }"
-                        @click="openDashboard"
-                    >
+                    <button class="menu-item" :class="{ active: page === 'dashboard' }" @click="openDashboard">
                         <span class="menu-icon">🏠</span>
                         <span>ホーム</span>
                     </button>
 
 
                     <!-- 教材 -->
-                    <button
-                        class="menu-item"
-                        :class="{ active: page === 'dashboard' }"
-                        @click="openDashboard"
-                    >
+                    <button class="menu-item" :class="{ active: page === 'dashboard' }" @click="openDashboard">
                         <span class="menu-icon">📚</span>
                         <span>教材</span>
                     </button>
 
 
                     <!-- クラス -->
-                    <button
-                        class="menu-item"
-                        :class="{ active: page === 'class' }"
-                        @click="openClassManagement"
-                    >
+                    <button class="menu-item" :class="{ active: page === 'class' }" @click="openClassManagement">
                         <span class="menu-icon">🏫</span>
                         <span>クラス</span>
                     </button>
 
 
                     <!-- 宿題 -->
-                    <button
-                        class="menu-item"
-                        :class="{ active: page === 'homework' }"
-                        @click="openHomework"
-                    >
+                    <button class="menu-item" :class="{ active: page === 'homework' }" @click="openHomework">
                         <span class="menu-icon">📝</span>
                         <span>宿題</span>
                     </button>
 
 
                     <!-- クイズ -->
-                    <button
-                        class="menu-item"
-                        :class="{ active: page === 'quiz' }"
-                        @click="openQuiz"
-                    >
+                    <button class="menu-item" :class="{ active: page === 'quiz' }" @click="openQuiz">
                         <span class="menu-icon">❓</span>
                         <span>クイズ</span>
                     </button>
@@ -115,10 +88,7 @@
 
                 <div class="sidebar-bottom">
 
-                    <button
-                        class="menu-item"
-                        @click="openSettings"
-                    >
+                    <button class="menu-item" @click="openSettings">
                         <span class="menu-icon">⚙️</span>
                         <span>設定</span>
                     </button>
@@ -136,35 +106,25 @@
 
                 <!-- 教材一覧 / ホーム -->
 
-                <DashboardView
-                    v-if="page === 'dashboard'"
-                    @edit="openEditor"
-                />
+                <DashboardView v-if="page === 'dashboard'" @edit="openEditor" @submissions="openSubmissions" />
 
 
                 <!-- 教材編集 -->
 
-                <CanvasEditorView
-                    v-else-if="page === 'editor'"
-                    :lesson="lesson"
-                    @back="backDashboard"
-                />
+                <CanvasEditorView v-else-if="page === 'editor'" :lesson="lesson" @back="backDashboard" />
+
+                <!-- 提出物管理 -->
+                <SubmissionStatusView v-else-if="page === 'submissions'" :lesson="lesson" @back="backDashboard" />
 
 
                 <!-- クラス管理 -->
 
-                <ClassManagementView
-                    v-else-if="page === 'class'"
-                    @back="backDashboard"
-                />
+                <ClassManagementView v-else-if="page === 'class'" @back="backDashboard" />
 
 
                 <!-- 宿題 -->
 
-                <div
-                    v-else-if="page === 'homework'"
-                    class="coming-soon"
-                >
+                <div v-else-if="page === 'homework'" class="coming-soon">
 
                     <div class="coming-icon">
                         📝
@@ -181,10 +141,7 @@
 
                 <!-- クイズ -->
 
-                <div
-                    v-else-if="page === 'quiz'"
-                    class="coming-soon"
-                >
+                <div v-else-if="page === 'quiz'" class="coming-soon">
 
                     <div class="coming-icon">
                         ❓
@@ -201,10 +158,7 @@
 
                 <!-- 設定 -->
 
-                <div
-                    v-else-if="page === 'settings'"
-                    class="coming-soon"
-                >
+                <div v-else-if="page === 'settings'" class="coming-soon">
 
                     <div class="coming-icon">
                         ⚙️
@@ -239,6 +193,9 @@ import CanvasEditorView
 
 import ClassManagementView
     from './views/ClassManagementView.vue'
+
+import SubmissionStatusView
+    from './views/SubmissionStatusView.vue'
 
 
 // =========================
@@ -281,6 +238,14 @@ function openEditor(target) {
 
 }
 
+function openSubmissions(target) {
+    console.log('提出状況ページを開きます:', target)
+
+    lesson.value = target
+    page.value = 'submissions'
+
+    console.log('現在のpage:', page.value)
+}
 
 // =========================
 // ホーム
@@ -351,7 +316,6 @@ function backDashboard() {
 
 
 <style scoped>
-
 /* =========================
    アプリ全体
 ========================= */
@@ -628,5 +592,4 @@ function backDashboard() {
     color: #888;
 
 }
-
 </style>

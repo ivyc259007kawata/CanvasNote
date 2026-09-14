@@ -94,8 +94,63 @@
             </section>
 
             <!-- =================================================
-     生徒追加モーダル
-================================================== -->
+                 教材一覧
+            ================================================== -->
+            <section class="lesson-section">
+
+                <div class="section-header">
+
+                    <div>
+                        <h2>
+                            📚 教材一覧
+                        </h2>
+
+                        <p>
+                            {{ selectedClass?.lessons?.length ?? 0 }}件
+                        </p>
+                    </div>
+
+                    <button class="add-button" @click="openLessonModal">
+                        ＋ 教材を追加
+                    </button>
+
+                </div>
+
+                <!-- 教材がある場合 -->
+                <div v-if="selectedClass?.lessons?.length > 0" class="lesson-list">
+
+                    <div v-for="lesson in selectedClass.lessons" :key="lesson.id" class="lesson-card">
+
+                        <div class="lesson-icon">
+                            📘
+                        </div>
+
+                        <div class="lesson-info">
+
+                            <h3>
+                                {{ lesson.title }}
+                            </h3>
+
+                            <p>
+                                教材ID：{{ lesson.id }}
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- 教材がない場合 -->
+                <div v-else class="empty-message">
+                    このクラスにはまだ教材がありません。
+                </div>
+
+            </section>
+
+            <!-- =================================================
+                生徒追加モーダル
+            ================================================== -->
 
             <div v-if="showStudentModal" class="modal-overlay" @click.self="closeStudentModal">
 
@@ -173,6 +228,82 @@
 
             </div>
         </template>
+
+        <!-- =================================================
+                 教材追加モーダル
+            ================================================== -->
+        <div v-if="showLessonModal" class="modal-overlay" @click.self="closeLessonModal">
+
+            <div class="student-modal">
+
+                <div class="modal-header">
+
+                    <div>
+
+                        <h2>
+                            教材を追加
+                        </h2>
+
+                        <p>
+                            {{ selectedClass?.name }}
+                            に追加する教材を選択してください
+                        </p>
+
+                    </div>
+
+                    <button class="close-button" @click="closeLessonModal">
+                        ×
+                    </button>
+
+                </div>
+
+
+                <!-- 読み込み中 -->
+                <div v-if="lessonsLoading" class="modal-message">
+                    教材一覧を読み込み中……
+                </div>
+
+
+                <!-- 教材一覧 -->
+                <div v-else-if="availableLessons.length > 0" class="modal-student-list">
+
+                    <div v-for="lesson in availableLessons" :key="lesson.id" class="modal-student-card">
+
+                        <div class="lesson-icon">
+                            📘
+                        </div>
+
+                        <div class="student-info">
+
+                            <h3>
+                                {{ lesson.title }}
+                            </h3>
+
+                            <p>
+                                教材ID：{{ lesson.id }}
+                            </p>
+
+                        </div>
+
+                        <button class="select-button" :disabled="lessonAdding" @click="addLesson(lesson)">
+                            追加
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- 教材がない -->
+                <div v-else class="modal-message">
+                    追加できる教材がありません。
+                </div>
+
+            </div>
+
+        </div>
+
+
 
 
         <!-- =================================================
@@ -281,8 +412,8 @@
             </section>
 
             <!-- =================================================
-     クラス追加モーダル
-================================================== -->
+                クラス追加モーダル
+            ================================================== -->
 
             <div v-if="showClassModal" class="modal-overlay" @click.self="closeClassModal">
 
@@ -431,6 +562,18 @@ const studentsLoading = ref(false)
 const showStudentModal = ref(false)
 
 // =========================
+// 教材一覧
+// =========================
+const availableLessons = ref([])
+const lessonsLoading = ref(false)
+const lessonAdding = ref(false)
+
+// =========================
+// 教材追加画面
+// =========================
+const showLessonModal = ref(false)
+
+// =========================
 // クラス追加
 // =========================
 
@@ -569,6 +712,148 @@ const loadStudents = async () => {
 const openStudentModal = async () => {
     await loadStudents()
     showStudentModal.value = true
+}
+
+// =========================
+// 追加可能な教材一覧取得
+// =========================
+const loadAvailableLessons = async () => {
+
+    try {
+
+        lessonsLoading.value = true
+
+        const response = await fetch(
+            `/classes-json/${selectedClass.value.id}/available-lessons`,
+            {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        if (!response.ok) {
+
+            throw new Error(
+                '教材一覧の取得に失敗しました'
+            )
+
+        }
+
+        availableLessons.value =
+            await response.json()
+
+    } catch (err) {
+
+        console.error(
+            '教材取得エラー:',
+            err
+        )
+
+        availableLessons.value = []
+
+    } finally {
+
+        lessonsLoading.value = false
+
+    }
+
+}
+
+// =========================
+// 教材追加画面を開く
+// =========================
+const openLessonModal = async () => {
+
+    await loadAvailableLessons()
+
+    showLessonModal.value = true
+
+}
+
+// =========================
+// 教材追加画面を閉じる
+// =========================
+const closeLessonModal = () => {
+
+    showLessonModal.value = false
+
+}
+
+// =========================
+// 教材をクラスに追加
+// =========================
+const addLesson = async (lesson) => {
+
+    try {
+
+        lessonAdding.value = true
+
+        const response = await fetch(
+            `/classes-json/${selectedClass.value.id}/lessons`,
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                },
+
+                body: JSON.stringify({
+                    lesson_id: lesson.id
+                })
+            }
+        )
+
+        const data =
+            await response.json()
+
+        if (!response.ok) {
+
+            alert(
+                data.message ??
+                '教材の追加に失敗しました'
+            )
+
+            return
+        }
+
+        alert(
+            '教材を追加しました！'
+        )
+
+        // クラス情報を再取得
+        await openClass(
+            selectedClass.value
+        )
+
+        // モーダルを閉じる
+        closeLessonModal()
+
+    } catch (err) {
+
+        console.error(
+            '教材追加エラー:',
+            err
+        )
+
+        alert(
+            '教材の追加に失敗しました'
+        )
+
+    } finally {
+
+        lessonAdding.value = false
+
+    }
+
 }
 
 // =========================
@@ -1303,5 +1588,118 @@ h1 {
 .create-button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+/* =========================
+   教材一覧
+========================= */
+
+.lesson-section {
+
+    margin-top: 24px;
+
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 12px;
+
+    padding: 24px;
+
+}
+
+
+/* 教材一覧 */
+
+.lesson-list {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fill,
+            minmax(260px, 1fr));
+
+    gap: 16px;
+
+}
+
+
+/* 教材カード */
+
+.lesson-card {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    padding: 18px;
+
+    border: 1px solid #ddd;
+
+    border-radius: 10px;
+
+    background: #fafafa;
+
+}
+
+
+.lesson-card:hover {
+
+    border-color: #93c5fd;
+
+}
+
+
+/* 教材アイコン */
+
+.lesson-icon {
+
+    width: 44px;
+
+    height: 44px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: #eff6ff;
+
+    font-size: 22px;
+
+}
+
+
+/* 教材情報 */
+
+.lesson-info {
+
+    flex: 1;
+
+}
+
+
+.lesson-info h3 {
+
+    margin: 0 0 5px;
+
+    font-size: 16px;
+
+}
+
+
+.lesson-info p {
+
+    margin: 0;
+
+    color: #777;
+
+    font-size: 13px;
+
 }
 </style>

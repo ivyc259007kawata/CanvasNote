@@ -67,6 +67,11 @@
                         <span>クラス</span>
                     </button>
 
+                    <!-- 生徒 -->
+                    <button class="menu-item" :class="{ active: page === 'students' }" @click="openStudentManagement">
+                        <span class="menu-icon">👥</span>
+                        <span>生徒</span>
+                    </button>
 
                     <!-- 宿題 -->
                     <button class="menu-item" :class="{ active: page === 'homework' }" @click="openHomework">
@@ -110,17 +115,19 @@
 
 
                 <!-- 教材編集 -->
-
                 <CanvasEditorView v-else-if="page === 'editor'" :lesson="lesson" @back="backDashboard" />
 
                 <!-- 提出物管理 -->
-                <SubmissionStatusView v-else-if="page === 'submissions'" :lesson="lesson" @back="backDashboard" />
-
+                <SubmissionStatusView v-else-if="page === 'submissions'" :lesson="lesson" @back="backDashboard"
+                    @view-answer="openSubmissionAnswer" />
+                <SubmissionAnswerView v-else-if="page === 'submission-answer'" :submission="submission"
+                    @back="backSubmissions" />
 
                 <!-- クラス管理 -->
-
                 <ClassManagementView v-else-if="page === 'class'" @back="backDashboard" />
 
+                <!-- 生徒管理 -->
+                <StudentManagementView v-else-if="page === 'students'" @back="backDashboard" />
 
                 <!-- 宿題 -->
 
@@ -197,6 +204,11 @@ import ClassManagementView
 import SubmissionStatusView
     from './views/SubmissionStatusView.vue'
 
+import SubmissionAnswerView
+    from './views/SubmissionAnswerView.vue'
+
+import StudentManagementView
+    from './views/StudentManagementView.vue'
 
 // =========================
 // ページ
@@ -205,6 +217,8 @@ import SubmissionStatusView
 const page = ref('dashboard')
 
 const lesson = ref(null)
+
+const submission = ref(null)
 
 
 // =========================
@@ -247,6 +261,20 @@ function openSubmissions(target) {
     console.log('現在のpage:', page.value)
 }
 
+function openSubmissionAnswer(target) {
+    console.log(
+        '提出回答ページを開きます:',
+        target
+    )
+
+    submission.value = target
+    page.value = 'submission-answer'
+}
+
+function backSubmissions() {
+    page.value = 'submissions'
+}
+
 // =========================
 // ホーム
 // =========================
@@ -268,6 +296,13 @@ function openClassManagement() {
 
 }
 
+// =========================
+// 生徒管理
+// =========================
+
+function openStudentManagement() {
+    page.value = 'students'
+}
 
 // =========================
 // 宿題

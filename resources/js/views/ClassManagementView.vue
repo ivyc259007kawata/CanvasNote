@@ -60,16 +60,12 @@
                 <!-- 生徒がいる場合 -->
 
                 <div v-if="selectedClass.users.length > 0" class="student-list">
-
                     <div v-for="student in selectedClass.users" :key="student.id" class="student-card">
-
                         <div class="student-icon">
                             👤
                         </div>
 
-
                         <div class="student-info">
-
                             <h3>
                                 {{ student.name }}
                             </h3>
@@ -77,16 +73,15 @@
                             <p>
                                 {{ student.email }}
                             </p>
-
                         </div>
 
+                        <button class="remove-student-button" @click.stop="removeStudent(student)">
+                            クラスから外す
+                        </button>
                     </div>
-
                 </div>
 
-
-                <!-- 生徒がいない場合 -->
-
+                <!-- 生徒が0人の場合 -->
                 <div v-else class="empty-message">
                     このクラスにはまだ生徒がいません。
                 </div>
@@ -118,15 +113,12 @@
 
                 <!-- 教材がある場合 -->
                 <div v-if="selectedClass?.lessons?.length > 0" class="lesson-list">
-
                     <div v-for="lesson in selectedClass.lessons" :key="lesson.id" class="lesson-card">
-
                         <div class="lesson-icon">
                             📘
                         </div>
 
                         <div class="lesson-info">
-
                             <h3>
                                 {{ lesson.title }}
                             </h3>
@@ -134,11 +126,12 @@
                             <p>
                                 教材ID：{{ lesson.id }}
                             </p>
-
                         </div>
 
+                        <button class="remove-lesson-button" @click.stop="removeLesson(lesson)">
+                            クラスから外す
+                        </button>
                     </div>
-
                 </div>
 
                 <!-- 教材がない場合 -->
@@ -925,6 +918,130 @@ const addStudent = async (student) => {
 }
 
 // =========================
+// クラスから生徒を外す
+// =========================
+const removeStudent = async (student) => {
+
+    const confirmed = confirm(
+        `${student.name}さんをこのクラスから外しますか？`
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/classes-json/${selectedClass.value.id}/students/${student.id}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                }
+            }
+        )
+
+        const data =
+            await response.json()
+
+        if (!response.ok) {
+            alert(
+                data.message ??
+                '生徒をクラスから外せませんでした'
+            )
+            return
+        }
+
+        alert('生徒をクラスから外しました！')
+
+        // クラス情報を再取得
+        await openClass(
+            selectedClass.value
+        )
+
+    } catch (err) {
+
+        console.error(
+            '生徒削除エラー:',
+            err
+        )
+
+        alert(
+            '生徒をクラスから外せませんでした'
+        )
+    }
+}
+
+// =========================
+// クラスから教材を外す
+// =========================
+const removeLesson = async (lesson) => {
+
+    const confirmed = confirm(
+        `「${lesson.title}」をこのクラスから外しますか？`
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+
+        const response = await fetch(
+            `/classes-json/${selectedClass.value.id}/lessons/${lesson.id}`,
+            {
+                method: 'DELETE',
+
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                }
+            }
+        )
+
+        const data =
+            await response.json()
+
+        if (!response.ok) {
+            alert(
+                data.message ??
+                '教材をクラスから外せませんでした'
+            )
+            return
+        }
+
+        alert('教材をクラスから外しました！')
+
+        // クラス情報を再取得
+        await openClass(
+            selectedClass.value
+        )
+
+    } catch (err) {
+
+        console.error(
+            '教材削除エラー:',
+            err
+        )
+
+        alert(
+            '教材をクラスから外せませんでした'
+        )
+    }
+}
+
+// =========================
 // クラス追加画面を開く
 // =========================
 
@@ -1332,6 +1449,44 @@ h1 {
     background: #fafafa;
 }
 
+/* =========================
+   生徒をクラスから外す
+========================= */
+
+.remove-student-button {
+    padding: 8px 12px;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    background: white;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.remove-student-button:hover {
+    background: #fef2f2;
+}
+
+/* =========================
+   教材をクラスから外す
+========================= */
+
+.remove-lesson-button {
+    padding: 8px 12px;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    background: white;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.remove-lesson-button:hover {
+    background: #fef2f2;
+}
+
 
 .student-icon {
     width: 44px;
@@ -1595,30 +1750,21 @@ h1 {
 ========================= */
 
 .lesson-section {
-
     margin-top: 24px;
-
     background: white;
-
     border: 1px solid #ddd;
-
     border-radius: 12px;
-
     padding: 24px;
-
 }
 
 
 /* 教材一覧 */
 
 .lesson-list {
-
     display: grid;
-
     grid-template-columns:
         repeat(auto-fill,
             minmax(260px, 1fr));
-
     gap: 16px;
 
 }
@@ -1627,62 +1773,36 @@ h1 {
 /* 教材カード */
 
 .lesson-card {
-
     display: flex;
-
     align-items: center;
-
     gap: 15px;
-
     padding: 18px;
-
     border: 1px solid #ddd;
-
     border-radius: 10px;
-
     background: #fafafa;
-
 }
 
 
 .lesson-card:hover {
-
     border-color: #93c5fd;
-
 }
-
 
 /* 教材アイコン */
-
 .lesson-icon {
-
     width: 44px;
-
     height: 44px;
-
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
     border-radius: 10px;
-
     background: #eff6ff;
-
     font-size: 22px;
-
 }
-
 
 /* 教材情報 */
-
 .lesson-info {
-
     flex: 1;
-
 }
-
 
 .lesson-info h3 {
 

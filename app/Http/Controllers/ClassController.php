@@ -97,6 +97,42 @@ class ClassController extends Controller
         return response()->json($students);
     }
 
+    // =========================
+    // 生徒アカウント作成
+    // =========================
+
+    public function storeStudent(Request $request)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 入力内容をチェック
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // 生徒アカウントを作成
+        $student = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => 'student',
+        ]);
+
+        return response()->json([
+            'message' => '生徒アカウントを作成しました',
+            'student' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'email' => $student->email,
+            ],
+        ], 201);
+    }
+
 
     // =========================
     // クラスに生徒を追加
@@ -144,6 +180,46 @@ class ClassController extends Controller
         return response()->json([
             'message' => '生徒を追加しました'
         ], 201);
+    }
+
+    // =========================
+// クラスから生徒を削除
+// =========================
+    public function removeStudent(
+        SchoolClass $class,
+        User $student
+    ) {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 生徒以外は削除対象にできない
+        if ($student->role !== 'student') {
+            return response()->json([
+                'message' => '生徒のみ削除できます'
+            ], 422);
+        }
+
+        // このクラスに所属しているか確認
+        if (
+            !$class->users()
+                ->where('users.id', $student->id)
+                ->exists()
+        ) {
+            return response()->json([
+                'message' => 'この生徒はこのクラスに所属していません'
+            ], 422);
+        }
+
+        // クラスとの所属関係だけを削除
+        $class->users()->detach(
+            $student->id
+        );
+
+        return response()->json([
+            'message' => 'クラスから生徒を削除しました'
+        ]);
     }
 
 
@@ -231,6 +307,42 @@ class ClassController extends Controller
         ], 201);
     }
 
+    // =========================
+// クラスから教材を削除
+// =========================
+    public function removeLesson(
+        SchoolClass $class,
+        Lesson $lesson
+    ) {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // この教材がこのクラスに所属しているか確認
+        if (
+            !$class->lessons()
+                ->where(
+                    'lessons.id',
+                    $lesson->id
+                )
+                ->exists()
+        ) {
+            return response()->json([
+                'message' => 'この教材はこのクラスに登録されていません'
+            ], 422);
+        }
+
+        // クラスと教材の所属関係だけを削除
+        $class->lessons()->detach(
+            $lesson->id
+        );
+
+        return response()->json([
+            'message' => 'クラスから教材を外しました'
+        ]);
+    }
+
     public function studentLessons()
     {
         if (Auth::user()->role !== 'student') {
@@ -249,4 +361,6 @@ class ClassController extends Controller
 
         return response()->json($lessons);
     }
+
+
 }

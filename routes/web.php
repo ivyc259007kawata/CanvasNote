@@ -114,6 +114,11 @@ Route::middleware('auth')->post(
     [\App\Http\Controllers\SubmissionController::class, 'save']
 );
 
+Route::middleware('auth')->get(
+    '/student-lessons-json/{lesson}/submission',
+    [\App\Http\Controllers\SubmissionController::class, 'show']
+);
+
 Route::middleware('auth')->post(
     '/student-lessons-json/{lesson}/submission/submit',
     [\App\Http\Controllers\SubmissionController::class, 'submit']
@@ -130,8 +135,18 @@ Route::middleware('auth')->get(
 );
 
 Route::middleware('auth')->post(
+    '/students-json',
+    [\App\Http\Controllers\ClassController::class, 'storeStudent']
+);
+
+Route::middleware('auth')->post(
     '/classes-json/{class}/students',
     [\App\Http\Controllers\ClassController::class, 'addStudent']
+);
+
+Route::middleware('auth')->delete(
+    '/classes-json/{class}/students/{student}',
+    [\App\Http\Controllers\ClassController::class, 'removeStudent']
 );
 
 Route::middleware('auth')->get(
@@ -147,6 +162,10 @@ Route::middleware('auth')->get(
 Route::middleware('auth')->post(
     '/classes-json/{class}/lessons',
     [\App\Http\Controllers\ClassController::class, 'addLesson']
+);
+Route::middleware('auth')->delete(
+    '/classes-json/{class}/lessons/{lesson}',
+    [\App\Http\Controllers\ClassController::class, 'removeLesson']
 );
 
 

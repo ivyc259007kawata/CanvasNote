@@ -203,4 +203,18 @@ button {
     border: 1px dashed #ddd;
     border-radius: 12px;
 }
+
+.view-answer-button {
+    margin-top: 12px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+}
+
+.view-answer-button:hover {
+    opacity: 0.85;
+}
 </style>

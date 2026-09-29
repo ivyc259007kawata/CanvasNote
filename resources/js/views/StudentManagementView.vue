@@ -26,44 +26,205 @@
         <!-- =========================
              生徒一覧
         ========================= -->
+        <!-- =========================
+     生徒一覧・詳細
+========================= -->
         <section class="student-section">
 
-            <div v-if="loading" class="loading-message">
-                生徒情報を読み込んでいます...
-            </div>
+            <!-- =========================
+         生徒詳細
+    ========================= -->
+            <div v-if="selectedStudent" class="student-detail">
 
+                <!-- 戻る -->
+                <button class="back-button" @click="closeStudentDetail">
+                    ← 生徒一覧に戻る
+                </button>
 
-            <div v-else-if="students.length > 0" class="student-list">
+                <!-- 読み込み中 -->
+                <div v-if="detailLoading" class="loading-message">
+                    生徒情報を読み込んでいます...
+                </div>
 
-                <div v-for="student in students" :key="student.id" class="student-card" @click="openStudent(student)">
+                <!-- 詳細表示 -->
+                <div v-else-if="studentDetail" class="detail-content">
 
-                    <div class="student-icon">
-                        👤
+                    <!-- =========================
+                 基本情報
+            ========================= -->
+                    <div class="detail-header">
+
+                        <div class="student-icon">
+                            👤
+                        </div>
+
+                        <div>
+                            <h2>
+                                {{ studentDetail.student.name }}
+                            </h2>
+
+                            <p>
+                                {{ studentDetail.student.email }}
+                            </p>
+                        </div>
+
                     </div>
 
-                    <div class="student-info">
 
-                        <h2>
-                            {{ student.name }}
-                        </h2>
+                    <!-- =========================
+                 所属クラス
+            ========================= -->
+                    <section class="detail-section">
 
-                        <p>
-                            {{ student.email }}
+                        <h3>
+                            🏫 所属クラス
+                        </h3>
+
+                        <div v-if="studentDetail.classes.length > 0" class="class-list">
+
+                            <div v-for="schoolClass in studentDetail.classes" :key="schoolClass.id" class="class-item">
+                                {{ schoolClass.grade }}年
+                                {{ schoolClass.name }}
+                            </div>
+
+                        </div>
+
+                        <p v-else class="no-data">
+                            所属しているクラスはありません。
                         </p>
 
-                    </div>
+                    </section>
 
-                    <div class="student-arrow">
-                        →
-                    </div>
+
+                    <!-- =========================
+                 提出状況
+            ========================= -->
+                    <section class="detail-section">
+
+                        <h3>
+                            📋 提出状況
+                        </h3>
+
+                        <div v-if="studentDetail.submissions.length > 0" class="submission-list">
+
+                            <div v-for="submission in studentDetail.submissions" :key="submission.id"
+                                class="submission-item">
+
+                                <!-- 課題名 -->
+                                <div class="submission-main">
+
+                                    <strong class="submission-title">
+                                        {{ submission.lesson_title }}
+                                    </strong>
+
+                                    <!-- 提出状態 -->
+                                    <div class="submission-status">
+
+                                        <span v-if="submission.status === 'submitted'" class="status submitted">
+                                            🟢 提出済み
+                                        </span>
+
+                                        <span v-else-if="submission.status === 'returned'" class="status returned">
+                                            🟣 返却済み
+                                        </span>
+
+                                        <span v-else class="status draft">
+                                            📝 下書き
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- 提出情報 -->
+                                <div class="submission-detail">
+
+                                    <!-- 提出日時 -->
+                                    <div v-if="submission.submitted_at" class="submission-date">
+                                        提出日時：
+                                        {{ formatDateTime(submission.submitted_at) }}
+                                    </div>
+
+                                    <!-- 点数 -->
+                                    <div v-if="submission.score !== null" class="submission-score">
+                                        {{ submission.score }} / 100
+                                    </div>
+
+                                    <div v-else class="submission-score no-score">
+                                        未採点
+                                    </div>
+
+                                    <!-- コメント -->
+                                    <div v-if="submission.comment" class="submission-comment">
+                                        <span class="comment-label">
+                                            コメント
+                                        </span>
+
+                                        <p>
+                                            {{ submission.comment }}
+                                        </p>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <p v-else class="no-data">
+                            まだ提出履歴はありません。
+                        </p>
+
+                    </section>
 
                 </div>
 
             </div>
 
 
-            <div v-else class="empty-message">
-                生徒がまだ登録されていません。
+            <!-- =========================
+         生徒一覧
+    ========================= -->
+            <div v-else>
+
+                <div v-if="loading" class="loading-message">
+                    生徒情報を読み込んでいます...
+                </div>
+
+                <div v-else-if="students.length > 0" class="student-list">
+
+                    <div v-for="student in students" :key="student.id" class="student-card"
+                        @click="openStudent(student)">
+
+                        <div class="student-icon">
+                            👤
+                        </div>
+
+                        <div class="student-info">
+
+                            <h2>
+                                {{ student.name }}
+                            </h2>
+
+                            <p>
+                                {{ student.email }}
+                            </p>
+
+                        </div>
+
+                        <div class="student-arrow">
+                            →
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div v-else class="empty-message">
+                    生徒がまだ登録されていません。
+                </div>
+
             </div>
 
         </section>
@@ -214,16 +375,88 @@ const loadStudents = async () => {
     }
 }
 
-
 // =========================
-// 生徒追加モーダルを開く
+// 生徒詳細
 // =========================
 
-const openStudentModal = () => {
+const selectedStudent = ref(null)
+const studentDetail = ref(null)
+const detailLoading = ref(false)
 
-    showStudentModal.value = true
+const openStudent = async (student) => {
+    selectedStudent.value = student
+    detailLoading.value = true
 
+    try {
+        const response = await fetch(
+            `/students-json/${student.id}`,
+            {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error(
+                '生徒詳細の取得に失敗しました'
+            )
+        }
+
+        studentDetail.value =
+            await response.json()
+
+    } catch (error) {
+        console.error(
+            '生徒詳細取得エラー:',
+            error
+        )
+
+        alert(
+            '生徒詳細を取得できませんでした'
+        )
+
+        selectedStudent.value = null
+
+    } finally {
+        detailLoading.value = false
+    }
 }
+
+const closeStudentDetail = () => {
+    selectedStudent.value = null
+    studentDetail.value = null
+}
+
+// =========================
+// 日付表示
+// =========================
+
+const formatDateTime = (date) => {
+
+    if (!date) {
+        return ''
+    }
+
+    const value = new Date(date)
+
+    if (Number.isNaN(value.getTime())) {
+        return date
+    }
+
+    return value.toLocaleString(
+        'ja-JP',
+        {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }
+    )
+}
+
+
 
 
 // =========================
@@ -324,15 +557,6 @@ const createStudent = async () => {
 
     }
 }
-
-// =========================
-// 生徒詳細を開く
-// =========================
-
-const openStudent = (student) => {
-    console.log('選択した生徒:', student)
-}
-
 
 onMounted(() => {
 
@@ -625,5 +849,184 @@ onMounted(() => {
 .create-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.student-detail {
+    max-width: 800px;
+}
+
+.back-button {
+    margin-bottom: 24px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #eee;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background: #ddd;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+}
+
+.detail-header h2 {
+    margin: 0 0 6px;
+}
+
+.detail-header p {
+    margin: 0;
+    color: #777;
+}
+
+.detail-section {
+    margin-bottom: 24px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: white;
+}
+
+.detail-section h3 {
+    margin-top: 0;
+}
+
+.class-list,
+.submission-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.no-data {
+    margin: 0;
+    color: #777;
+}
+
+/* =========================
+   提出状況
+========================= */
+
+.submission-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.submission-item {
+    padding: 18px;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+
+/* =========================
+   課題名・状態
+========================= */
+
+.submission-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.submission-title {
+    font-size: 16px;
+}
+
+
+/* =========================
+   提出状態
+========================= */
+
+.submission-status {
+    display: flex;
+    align-items: center;
+}
+
+.status {
+    font-size: 14px;
+}
+
+.status.submitted {
+    color: #15803d;
+}
+
+.status.returned {
+    color: #7e22ce;
+}
+
+.status.draft {
+    color: #777;
+}
+
+
+/* =========================
+   提出情報
+========================= */
+
+.submission-detail {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e5e5;
+}
+
+.submission-date {
+    margin-bottom: 10px;
+    color: #777;
+    font-size: 13px;
+}
+
+
+/* =========================
+   点数
+========================= */
+
+.submission-score {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.submission-score.no-score {
+    color: #999;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+
+/* =========================
+   コメント
+========================= */
+
+.submission-comment {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 8px;
+    background: white;
+}
+
+.comment-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #666;
+}
+
+.submission-comment p {
+    margin: 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
 }
 </style>

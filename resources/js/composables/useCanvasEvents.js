@@ -213,6 +213,33 @@ export function useCanvasEvents(
     }
 
     // =====================
+    // テキストのダブルクリック編集
+    // =====================
+    const onMouseDblClick = (event) => {
+        const fc = fabricCanvas()
+        if (!fc) return
+
+        // 選択ツールのときだけ編集
+        if (state.tool !== 'select') return
+
+        const target = event.target
+
+        // i-text以外は対象外
+        if (!target || target.type !== 'i-text') return
+
+        // テキストを選択
+        fc.setActiveObject(target)
+
+        // 編集モードにする
+        target.enterEditing()
+
+        // 文字全体を選択
+        target.selectAll()
+
+        fc.requestRenderAll()
+    }
+
+    // =====================
     // イベント登録
     // =====================
 
@@ -230,6 +257,12 @@ export function useCanvasEvents(
         fc.on(
             'mouse:down',
             onMouseDown
+        )
+
+        // ダブルクリック
+        fc.on(
+            'mouse:dblclick',
+            onMouseDblClick
         )
 
         // マウス移動
@@ -287,6 +320,11 @@ export function useCanvasEvents(
         fc.off(
             'mouse:down',
             onMouseDown
+        )
+        // ダブルクリック解除
+        fc.off(
+            'mouse:dblclick',
+            onMouseDblClick
         )
 
         fc.off(

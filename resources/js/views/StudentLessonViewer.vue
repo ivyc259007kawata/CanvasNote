@@ -18,9 +18,27 @@
                 </h1>
             </div>
 
-            <button v-if="!isAnswerMode" class="answer-button" @click="startAnswer">
-                ✏️ 回答する
-            </button>
+            <template v-if="!isAnswerMode">
+
+                <button v-if="submissionStatus === 'submitted'" class="withdraw-button" @click="withdrawSubmission">
+                    ↩️ 提出を取り消す
+                </button>
+
+                <div v-else-if="submissionStatus === 'returned'" class="returned-area">
+                    <span class="returned-label">
+                        🟣 採点結果が返却されています
+                    </span>
+
+                    <button class="edit-returned-button" @click="startReturnedAnswer">
+                        ✏️ 修正して再提出
+                    </button>
+                </div>
+
+                <button v-else class="answer-button" @click="startAnswer">
+                    ✏️ 回答する
+                </button>
+
+            </template>
 
             <template v-else>
                 <button class="save-button" @click="saveAnswer">
@@ -80,6 +98,26 @@
 
         </main>
 
+        <!-- 採点結果 -->
+        <section v-if="submissionStatus === 'returned'" class="grading-result">
+            <h2>📝 採点結果</h2>
+
+            <div class="score">
+                <span>点数</span>
+                <strong>
+                    {{ submissionScore }} / 100
+                </strong>
+            </div>
+
+            <div v-if="submissionComment" class="comment">
+                <h3>💬 先生からのコメント</h3>
+
+                <p>
+                    {{ submissionComment }}
+                </p>
+            </div>
+        </section>
+
     </div>
 </template>
 
@@ -97,9 +135,11 @@ import {
     Canvas,
     Rect,
     IText,
-    PencilBrush
+    PencilBrush,
+    FabricObject
 } from 'fabric'
 
+FabricObject.customProperties = ['cnRole']
 
 const props = defineProps({
     lesson: {
@@ -108,31 +148,21 @@ const props = defineProps({
     }
 })
 
-
-defineEmits([
-    'back'
-])
+defineEmits(['back'])
 
 
 const canvasEl = ref(null)
-
 const fabricCanvas = ref(null)
-
 const pages = ref([])
-
 const currentPage = ref(0)
-
-const lessonTitle = ref(
-    props.lesson?.title ?? '教材'
-)
-
+const lessonTitle = ref(props.lesson?.title ?? '教材')
 const loading = ref(true)
-
 const error = ref(null)
-
 const isAnswerMode = ref(false)
-
 const answerTool = ref('select')
+const submissionStatus = ref(null)
+const submissionScore = ref(null)
+const submissionComment = ref('')
 
 
 /*
@@ -181,6 +211,43 @@ const loadLesson = async () => {
                 title: `ページ${page.page_number}`,
                 canvasData: page.content
             }))
+
+
+        // 保存済みの生徒回答を取得
+        const answerResponse = await fetch(
+            `/student-lessons-json/${props.lesson.id}/submission`,
+            {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        if (!answerResponse.ok) {
+            throw new Error('保存済み回答の取得に失敗しました。')
+        }
+
+        const answerData = await answerResponse.json()
+        submissionStatus.value = answerData.submission?.status ?? null
+        //点数
+        submissionScore.value =
+            answerData.submission?.score ?? null
+        //先生側コメント
+        submissionComment.value =
+            answerData.submission?.comment ?? ''
+        // 保存済み回答があれば、該当ページに設定
+        if (answerData.elements) {
+            answerData.elements.forEach(element => {
+                const page = pages.value.find(
+                    page => page.title === `ページ${element.page_number}`
+                )
+
+                if (page) {
+                    page.answerData = element.content
+                }
+            })
+        }
 
 
         if (pages.value.length === 0) {
@@ -235,6 +302,23 @@ const initCanvas = () => {
         'mouse:down',
         handleCanvasClick
     )
+
+    fabricCanvas.value.on(
+        'mouse:dblclick',
+        handleTextDoubleClick
+    )
+
+    fabricCanvas.value.on(
+        'path:created',
+        event => {
+            if (!isAnswerMode.value) return
+
+            event.path.set(
+                'cnRole',
+                'student'
+            )
+        }
+    )
 }
 
 
@@ -243,13 +327,11 @@ const initCanvas = () => {
  */
 const loadCurrentPage = async () => {
 
-    const fc =
-        fabricCanvas.value
+    const fc = fabricCanvas.value
 
     if (!fc) return
 
-    const page =
-        pages.value[currentPage.value]
+    const page = pages.value[currentPage.value]
 
     if (!page) return
 
@@ -258,25 +340,174 @@ const loadCurrentPage = async () => {
         page
     )
 
+    // Canvasを空にする
     fc.clear()
 
-    const canvasData = isAnswerMode.value
-        ? (page.answerData ?? page.canvasData)
-        : page.canvasData
+    let displayData
 
-    if (canvasData) {
-        console.log('Canvasデータ:', canvasData)
-        await fc.loadFromJSON(canvasData)
+    /*
+     * 回答モード・返却後の修正モード
+     *
+     * 先生の教材
+     * ＋
+     * 生徒の回答
+     */
+    if (
+        isAnswerMode.value ||
+        submissionStatus.value === 'returned'
+    ) {
+
+        const teacherObjects =
+            page.canvasData?.objects ?? []
+
+        const studentObjects =
+            page.answerData?.objects ?? []
+
+        displayData = {
+            version: '7.4.0',
+            objects: [
+                ...teacherObjects,
+                ...studentObjects
+            ]
+        }
+
+        console.log(
+            '先生オブジェクト数:',
+            teacherObjects.length
+        )
+
+        console.log(
+            '生徒オブジェクト数:',
+            studentObjects.length
+        )
+
+    } else {
+
+        /*
+         * 閲覧モード
+         *
+         * 先生の教材だけ
+         */
+        displayData = page.canvasData
     }
 
-    // 閲覧モードでは編集できないようにする
+    if (displayData) {
+
+        console.log(
+            '表示するCanvasデータ:',
+            displayData
+        )
+
+        await fc.loadFromJSON(displayData)
+
+        /*
+         * 回答モードでは、
+         *
+         * 前半 = 先生
+         * 後半 = 生徒
+         *
+         * として扱う
+         */
+        if (
+            isAnswerMode.value ||
+            submissionStatus.value === 'returned'
+        ) {
+
+            const teacherCount =
+                page.canvasData?.objects?.length ?? 0
+
+            fc.getObjects().forEach(
+                (object, index) => {
+
+                    if (index < teacherCount) {
+
+                        object.set(
+                            'cnRole',
+                            'teacher'
+                        )
+
+                    } else {
+
+                        object.set(
+                            'cnRole',
+                            'student'
+                        )
+
+                    }
+
+                }
+            )
+
+        } else {
+
+            /*
+             * 閲覧モード
+             */
+            fc.getObjects().forEach(
+                object => {
+
+                    object.set(
+                        'cnRole',
+                        'teacher'
+                    )
+
+                }
+            )
+
+        }
+    }
+
+    /*
+     * 閲覧モード
+     *
+     * 全オブジェクト編集禁止
+     */
     if (!isAnswerMode.value) {
-        fc.getObjects().forEach(object => {
-            object.set({
-                selectable: false,
-                evented: false
-            })
-        })
+
+        fc.getObjects().forEach(
+            object => {
+
+                object.set({
+                    selectable: false,
+                    evented: false
+                })
+
+            }
+        )
+
+    } else {
+
+        /*
+         * 回答モード
+         *
+         * 先生 → 編集禁止
+         * 生徒 → 編集可能
+         */
+        fc.getObjects().forEach(
+            object => {
+
+                if (
+                    object.cnRole === 'teacher'
+                ) {
+
+                    object.set({
+                        selectable: false,
+                        evented: false
+                    })
+
+                } else if (
+                    object.cnRole === 'student'
+                ) {
+
+                    object.set({
+                        selectable: true,
+                        evented: true
+                    })
+
+                }
+
+            }
+        )
     }
 
     fc.discardActiveObject()
@@ -294,8 +525,17 @@ const loadCurrentPage = async () => {
         fc.getHeight()
     )
 
-
-
+    console.table(
+        fc.getObjects().map(
+            (object, index) => ({
+                index,
+                type: object.type,
+                cnRole: object.cnRole,
+                selectable: object.selectable,
+                evented: object.evented
+            })
+        )
+    )
 }
 
 
@@ -304,15 +544,36 @@ const loadCurrentPage = async () => {
  */
 
 const saveCurrentAnswerPage = () => {
+
     if (!isAnswerMode.value) return
 
     const fc = fabricCanvas.value
+
     if (!fc) return
 
     const page = pages.value[currentPage.value]
+
     if (!page) return
 
-    page.answerData = fc.toJSON()
+    // 生徒が作ったオブジェクトだけ保存
+    const studentObjects = fc
+        .getObjects()
+        .filter(
+            object =>
+                object.cnRole === 'student'
+        )
+
+    page.answerData = {
+        version: '7.4.0',
+        objects: studentObjects.map(
+            object => object.toObject()
+        )
+    }
+
+    console.log(
+        '生徒回答として保存:',
+        page.answerData
+    )
 }
 
 const changePage = async (index) => {
@@ -330,7 +591,10 @@ const saveAnswer = async () => {
     try {
         const pagesData = pages.value.map((page, index) => ({
             page_number: index + 1,
-            content: page.answerData ?? page.canvasData
+            content: page.answerData ?? {
+                version: '7.4.0',
+                objects: []
+            }
         }))
 
         const response = await fetch(
@@ -357,6 +621,8 @@ const saveAnswer = async () => {
         const data = await response.json()
 
         console.log('回答保存成功:', data)
+
+        submissionStatus.value = 'draft'
 
         alert('回答を保存しました。')
 
@@ -393,6 +659,8 @@ const submitAnswer = async () => {
 
         console.log('回答提出成功:', data)
 
+        submissionStatus.value = 'submitted'
+
         alert('回答を提出しました。')
 
         // 回答モードを終了
@@ -408,41 +676,107 @@ const submitAnswer = async () => {
     }
 }
 
+const withdrawSubmission = async () => {
+
+    const confirmed = confirm(
+        '提出を取り消して、回答を修正しますか？'
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+
+        const response = await fetch(
+            `/student-lessons-json/${props.lesson.id}/submission/withdraw`,
+            {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content')
+                }
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || '提出の取り消しに失敗しました。'
+            )
+        }
+
+        console.log(
+            '提出取り消し成功:',
+            data
+        )
+
+        submissionStatus.value = 'draft'
+
+        alert('提出を取り消しました。')
+
+        // 回答モードに入る
+        await startAnswer()
+
+    } catch (err) {
+
+        console.error(
+            '提出取り消しエラー:',
+            err
+        )
+
+        alert(err.message)
+    }
+}
+
 /*
  * 生徒回答
  */
-const startAnswer = () => {
+const startAnswer = async () => {
+
+    isAnswerMode.value = true
+    answerTool.value = 'select'
+
+    if (fabricCanvas.value) {
+
+        fabricCanvas.value.isDrawingMode = false
+
+        // 保存済み回答を読み込む
+        await loadCurrentPage()
+
+        fabricCanvas.value.requestRenderAll()
+    }
+}
+
+//再提出
+const startReturnedAnswer = async () => {
     isAnswerMode.value = true
     answerTool.value = 'select'
 
     if (fabricCanvas.value) {
         fabricCanvas.value.isDrawingMode = false
 
-        fabricCanvas.value.getObjects().forEach(object => {
-            object.set({
-                selectable: false,
-                evented: false
-            })
-        })
+        await loadCurrentPage()
 
         fabricCanvas.value.requestRenderAll()
     }
 }
 
-const cancelAnswer = () => {
+const cancelAnswer = async () => {
     isAnswerMode.value = false
 
     if (fabricCanvas.value) {
         fabricCanvas.value.isDrawingMode = false
 
-        fabricCanvas.value.getObjects().forEach(object => {
-            object.set({
-                selectable: false,
-                evented: false
-            })
-        })
-
         fabricCanvas.value.discardActiveObject()
+
+        // 保存していない変更を破棄して、
+        // 保存済みの答案を再読み込み
+        await loadCurrentPage()
+
         fabricCanvas.value.requestRenderAll()
     }
 }
@@ -486,13 +820,58 @@ const setTool = (tool) => {
     fc.requestRenderAll()
 }
 
+const handleTextDoubleClick = (event) => {
+    if (!isAnswerMode.value) return
+
+    const target = event.target
+
+    if (
+        target &&
+        target.cnRole === 'student' &&
+        target.type === 'i-text'
+    ) {
+        const fc = fabricCanvas.value
+
+        if (!fc) return
+
+        fc.setActiveObject(target)
+
+        target.enterEditing()
+        target.selectAll()
+
+        fc.requestRenderAll()
+    }
+}
+
 const handleCanvasClick = (event) => {
     if (!isAnswerMode.value) return
 
     const fc = fabricCanvas.value
+
     if (!fc) return
 
     const pointer = fc.getScenePoint(event.e)
+
+    // 消しゴム
+    if (answerTool.value === 'eraser') {
+        const target = event.target
+
+        console.log('消しゴム対象:', target)
+        console.log('cnRole:', target?.cnRole)
+
+        if (
+            target &&
+            target.cnRole === 'student'
+        ) {
+            fc.remove(target)
+            fc.discardActiveObject()
+            fc.requestRenderAll()
+
+            console.log('生徒のオブジェクトを削除しました')
+        }
+
+        return
+    }
 
     // 四角
     if (answerTool.value === 'rectangle') {
@@ -503,13 +882,15 @@ const handleCanvasClick = (event) => {
             height: 120,
             fill: '#dbeafe',
             stroke: '#2563eb',
-            strokeWidth: 2
+            strokeWidth: 2,
+            cnRole: 'student'
         })
 
         fc.add(rect)
         fc.requestRenderAll()
 
         answerTool.value = 'select'
+
         return
     }
 
@@ -519,11 +900,14 @@ const handleCanvasClick = (event) => {
             left: pointer.x,
             top: pointer.y,
             fontSize: 30,
-            fill: '#000000'
+            fill: '#000000',
+            cnRole: 'student'
         })
 
         fc.add(text)
+
         fc.setActiveObject(text)
+
         text.enterEditing()
         text.selectAll()
 
@@ -532,34 +916,68 @@ const handleCanvasClick = (event) => {
         answerTool.value = 'select'
     }
 }
+const handleKeyDown = event => {
+    if (!isAnswerMode.value) return
+
+    const fc = fabricCanvas.value
+
+    if (!fc) return
+
+    const activeObject = fc.getActiveObject()
+
+    // テキスト編集中なら、
+    // Backspace / Delete は文字入力として使う
+    if (activeObject?.isEditing) {
+        return
+    }
+
+    const activeObjects = fc.getActiveObjects()
+
+    if (
+        (event.key === 'Delete' ||
+            event.key === 'Backspace') &&
+        activeObjects.length > 0
+    ) {
+        activeObjects.forEach(object => {
+            if (object.cnRole === 'student') {
+                fc.remove(object)
+            }
+        })
+
+        fc.discardActiveObject()
+
+        fc.requestRenderAll()
+    }
+}
 
 
-/*
- * 初期化
- */
-onMounted(async () => {
 
-    await loadLesson()
-
-    await nextTick()
-
-    initCanvas()
-
-    await loadCurrentPage()
-
-})
 
 /*
  * 終了時
  */
+onMounted(async () => {
+
+    window.addEventListener(
+        'keydown',
+        handleKeyDown
+    )
+    await loadLesson()
+    await nextTick()
+    initCanvas()
+    await loadCurrentPage()
+})
+
 onUnmounted(() => {
 
+    window.removeEventListener(
+        'keydown',
+        handleKeyDown
+    )
+
     if (fabricCanvas.value) {
-
         fabricCanvas.value.dispose()
-
     }
-
 })
 
 </script>
@@ -703,5 +1121,99 @@ canvas {
 
 .answer-toolbar button:hover {
     background: #f3f4f6;
+}
+
+.withdraw-button {
+    padding: 10px 16px;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    background: #fffbeb;
+    color: #b45309;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.withdraw-button:hover {
+    background: #fef3c7;
+}
+
+.grading-result {
+    margin-top: 20px;
+    padding: 24px;
+    background: white;
+    border-radius: 16px;
+    box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.grading-result h2 {
+    margin-top: 0;
+    color: #1f2937;
+}
+
+.score {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f3f4f6;
+    border-radius: 10px;
+}
+
+.score span {
+    color: #6b7280;
+}
+
+.score strong {
+    font-size: 24px;
+    color: #2563eb;
+}
+
+.comment {
+    margin-top: 20px;
+}
+
+.comment h3 {
+    margin-bottom: 10px;
+}
+
+.comment p {
+    margin: 0;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 10px;
+    white-space: pre-wrap;
+    line-height: 1.7;
+}
+
+.returned-label {
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #f5f3ff;
+    color: #7c3aed;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.returned-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.edit-returned-button {
+    padding: 10px 16px;
+    border: 1px solid #8b5cf6;
+    border-radius: 10px;
+    background: #f5f3ff;
+    color: #7c3aed;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-returned-button:hover {
+    background: #ede9fe;
 }
 </style>

@@ -76,7 +76,7 @@
                         </div>
 
                         <button class="remove-student-button" @click.stop="removeStudent(student)">
-                            クラスから外す
+                            外す
                         </button>
                     </div>
                 </div>
@@ -129,7 +129,7 @@
                         </div>
 
                         <button class="remove-lesson-button" @click.stop="removeLesson(lesson)">
-                            クラスから外す
+                            外す
                         </button>
                     </div>
                 </div>
@@ -1447,6 +1447,7 @@ h1 {
     border: 1px solid #ddd;
     border-radius: 10px;
     background: #fafafa;
+    box-sizing: border-box;
 }
 
 /* =========================
@@ -1462,6 +1463,7 @@ h1 {
     cursor: pointer;
     font-size: 13px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .remove-student-button:hover {
@@ -1481,6 +1483,7 @@ h1 {
     cursor: pointer;
     font-size: 13px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .remove-lesson-button:hover {
@@ -1497,6 +1500,11 @@ h1 {
     border-radius: 50%;
     background: #eff6ff;
     font-size: 22px;
+}
+
+.student-info {
+    min-width: 0;
+    flex: 1;
 }
 
 .student-info h3 {
@@ -1780,6 +1788,7 @@ h1 {
     border: 1px solid #ddd;
     border-radius: 10px;
     background: #fafafa;
+    box-sizing: border-box;
 }
 
 
@@ -1802,6 +1811,7 @@ h1 {
 /* 教材情報 */
 .lesson-info {
     flex: 1;
+    min-width: 0;
 }
 
 .lesson-info h3 {

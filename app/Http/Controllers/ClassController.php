@@ -98,6 +98,62 @@ class ClassController extends Controller
     }
 
     // =========================
+// 生徒詳細
+// =========================
+    public function student(User $student)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 生徒以外は対象にできない
+        if ($student->role !== 'student') {
+            return response()->json([
+                'message' => '生徒のみ表示できます'
+            ], 422);
+        }
+
+        // 所属クラスを取得
+        $student->load([
+            'schoolClasses',
+            'submissions.lesson'
+        ]);
+
+        return response()->json([
+            'student' => [
+                'id' => $student->id,
+                'name' => $student->name,
+                'email' => $student->email,
+            ],
+
+            'classes' => $student->schoolClasses
+                ->map(function ($class) {
+                    return [
+                        'id' => $class->id,
+                        'name' => $class->name,
+                        'grade' => $class->grade,
+                    ];
+                })
+                ->values(),
+
+            'submissions' => $student->submissions
+                ->map(function ($submission) {
+                    return [
+                        'id' => $submission->id,
+                        'lesson_id' => $submission->lesson_id,
+                        'lesson_title' => $submission->lesson?->title,
+                        'status' => $submission->status,
+                        'score' => $submission->score,
+                        'comment' => $submission->comment,
+                        'submitted_at' => $submission->submitted_at,
+                    ];
+                })
+                ->values(),
+        ]);
+    }
+
+    // =========================
     // 生徒アカウント作成
     // =========================
 

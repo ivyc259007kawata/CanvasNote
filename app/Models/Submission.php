@@ -12,6 +12,8 @@ class Submission extends Model
         'lesson_id',
         'student_id',
         'status',
+        'score',
+        'comment',
         'submitted_at',
     ];
 

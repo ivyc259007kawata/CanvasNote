@@ -9,7 +9,7 @@
 
         <div v-if="submissions.length > 0" class="submission-list">
 
-            <div v-for="submission in submissions" :key="submission.id" class="submission-card">
+            <div v-for="submission in submissions" :key="submission.student_id" class="submission-card">
 
                 <div class="student-info">
                     <h3>
@@ -30,13 +30,31 @@
 
                 <div class="status" :class="{
                     submitted: submission.status === 'submitted',
-                    draft: submission.status === 'draft'
+                    draft: submission.status === 'draft',
+                    'not-submitted': submission.status === 'not_submitted'
                 }">
                     {{
                         submission.status === 'submitted'
                             ? '🟢 提出済み'
-                            : '📝 下書き'
+                            : submission.status === 'draft'
+                                ? '📝 下書き'
+                                : '⚪ 未着手'
                     }}
+                </div>
+
+                <!-- 採点結果 -->
+                <div v-if="submission.status === 'submitted'" class="grading-result">
+                    <p v-if="submission.score !== null">
+                        📊 {{ submission.score }} / 100
+                    </p>
+
+                    <p v-else>
+                        📝 未採点
+                    </p>
+
+                    <p v-if="submission.comment" class="grading-comment">
+                        💬 {{ submission.comment }}
+                    </p>
                 </div>
 
             </div>
@@ -194,6 +212,11 @@ button {
     color: #6b7280;
 }
 
+.status.not-submitted {
+    background: #f9fafb;
+    color: #9ca3af;
+}
+
 .empty {
     margin-top: 25px;
     padding: 30px;
@@ -216,5 +239,21 @@ button {
 
 .view-answer-button:hover {
     opacity: 0.85;
+}
+
+.grading-result {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.grading-result p {
+    margin: 4px 0;
+}
+
+.grading-comment {
+    color: #555;
+    font-size: 14px;
 }
 </style>

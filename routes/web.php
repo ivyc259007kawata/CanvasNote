@@ -265,6 +265,11 @@ Route::middleware('auth')->get(
     [ClassController::class, 'student']
 );
 
+Route::middleware('auth')->delete(
+    '/students-json/{student}',
+    [ClassController::class, 'destroyStudent']
+);
+
 
 // ========================================
 // 認証

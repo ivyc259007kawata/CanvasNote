@@ -322,6 +322,23 @@ class ClassController extends Controller
         ]);
     }
 
+    public function destroyStudent(User $student)
+    {
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        if ($student->role !== 'student') {
+            abort(404);
+        }
+
+        $student->delete();
+
+        return response()->json([
+            'message' => '生徒アカウントを削除しました',
+        ]);
+    }
+
 
     // =========================
     // クラスに登録されている教材一覧

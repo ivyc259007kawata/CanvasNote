@@ -68,6 +68,10 @@
                             </p>
                         </div>
 
+                        <button class="delete-student-button" @click="deleteStudent">
+                            🗑 生徒アカウントを削除
+                        </button>
+
                     </div>
 
 
@@ -75,24 +79,32 @@
                  所属クラス
             ========================= -->
                     <section class="detail-section">
+                        <div class="section-header">
+                            <h3>
+                                🏫 所属クラス
+                            </h3>
 
-                        <h3>
-                            🏫 所属クラス
-                        </h3>
+                            <button class="add-class-button" @click="openClassModal">
+                                ＋ クラスを追加
+                            </button>
+                        </div>
 
                         <div v-if="studentDetail.classes.length > 0" class="class-list">
-
                             <div v-for="schoolClass in studentDetail.classes" :key="schoolClass.id" class="class-item">
-                                {{ schoolClass.grade }}年
-                                {{ schoolClass.name }}
-                            </div>
+                                <span>
+                                    {{ schoolClass.grade }}年
+                                    {{ schoolClass.name }}
+                                </span>
 
+                                <button class="remove-class-button" @click="removeStudentFromClass(schoolClass)">
+                                    ×
+                                </button>
+                            </div>
                         </div>
 
                         <p v-else class="no-data">
                             所属しているクラスはありません。
                         </p>
-
                     </section>
 
 
@@ -290,6 +302,7 @@
             </div>
         </div>
 
+
     </div>
 </template>
 
@@ -315,6 +328,12 @@ const loading = ref(false)
 // =========================
 
 const showStudentModal = ref(false)
+
+// 生徒追加モーダルを開く
+const openStudentModal = () => {
+    showStudentModal.value = true
+    formError.value = ''
+}
 
 // =========================
 // 生徒アカウント作成フォーム
@@ -555,6 +574,67 @@ const createStudent = async () => {
     } finally {
         creating.value = false
 
+    }
+}
+
+// =========================
+// 生徒アカウントを削除
+// =========================
+const deleteStudent = async () => {
+    if (!selectedStudent.value) {
+        return
+    }
+
+    const confirmed = window.confirm(
+        `「${selectedStudent.value.name}」の生徒アカウントを削除しますか？\n\n所属クラス・提出履歴・回答データも削除されます。`
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/students-json/${selectedStudent.value.id}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                }
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ?? '削除に失敗しました'
+            )
+        }
+
+        alert('生徒アカウントを削除しました')
+
+        // 詳細画面を閉じる
+        closeStudentDetail()
+
+        // 生徒一覧を再取得
+        await loadStudents()
+
+    } catch (error) {
+        console.error(
+            '生徒アカウント削除エラー:',
+            error
+        )
+
+        alert(
+            '生徒アカウントを削除できませんでした'
+        )
     }
 }
 
@@ -1028,5 +1108,83 @@ onMounted(() => {
     margin: 0;
     line-height: 1.6;
     white-space: pre-wrap;
+}
+
+/* =========================
+   生徒アカウント削除
+========================= */
+
+.student-detail-info {
+    flex: 1;
+}
+
+.delete-student-button {
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+    background: #dc2626;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-student-button:hover {
+    opacity: 0.85;
+}
+
+/* =========================
+   所属クラス
+========================= */
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0;
+}
+
+.add-class-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #333;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.add-class-button:hover {
+    opacity: 0.85;
+}
+
+.class-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.remove-class-button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: #eee;
+    color: #666;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.remove-class-button:hover {
+    background: #ddd;
+    color: #333;
 }
 </style>

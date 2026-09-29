@@ -5,7 +5,7 @@
 
     <!-- 生徒Dashboard -->
     <div v-else class="student-dashboard">
-        
+
         <header class="dashboard-header">
             <div>
                 <h1>📚 生徒ホーム</h1>
@@ -15,7 +15,7 @@
 
         <main class="dashboard-content">
 
-            <h2>📖 配布教材</h2>
+            <h2>📖 くばられたもの一覧</h2>
 
             <p v-if="loading" class="message">
                 教材を読み込んでいます...
@@ -42,6 +42,40 @@
                         <p class="teacher">
                             作成者：
                             {{ lesson.teacher?.name ?? '先生' }}
+                        </p>
+
+                        <!-- 提出状況 -->
+                        <p class="submission-status">
+                            状態：
+
+                            <span v-if="!lesson.submission_status">
+                                🟡 未提出
+                            </span>
+
+                            <span v-else-if="lesson.submission_status === 'draft'">
+                                📝 下書き
+                            </span>
+
+                            <span v-else-if="lesson.submission_status === 'submitted'">
+                                🟢 提出完了
+                            </span>
+
+                            <span v-else-if="lesson.submission_status === 'returned'">
+                                🟣 採点しました！
+                            </span>
+                        </p>
+
+                        <!-- 採点結果 -->
+                        <p v-if="
+                            lesson.submission_status === 'returned'
+                            && lesson.submission_score !== null
+                        " class="submission-score">
+                            点数：{{ lesson.submission_score }}点
+                        </p>
+
+                        <p v-if="lesson.submission_status === 'returned'" class="submission-comment-status">
+                            💬
+                            {{ lesson.submission_comment ? 'コメントあり' : 'コメントなし' }}
                         </p>
 
                     </div>
@@ -190,5 +224,26 @@ onMounted(() => {
 
 .open-button:hover {
     opacity: 0.9;
+}
+
+/* 提出状況 */
+.submission-status {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #555;
+}
+
+/* 採点結果 */
+.submission-score {
+    margin-top: 8px;
+    font-weight: bold;
+    color: #2563eb;
+}
+
+/* 先生からのコメント */
+.submission-comment-status {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #666;
 }
 </style>

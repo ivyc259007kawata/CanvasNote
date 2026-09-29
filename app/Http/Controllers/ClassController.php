@@ -459,6 +459,20 @@ class ClassController extends Controller
             ->unique('id')
             ->values();
 
+        // この生徒の提出状況を教材ごとに取得
+        $submissions = $student->submissions()
+            ->get()
+            ->keyBy('lesson_id');
+
+        // 各教材に提出状況を追加
+        $lessons->each(function ($lesson) use ($submissions) {
+            $submission = $submissions->get($lesson->id);
+
+            $lesson->submission_status = $submission?->status;
+            $lesson->submission_score = $submission?->score;
+            $lesson->submission_comment = $submission?->comment;
+        });
+
         return response()->json($lessons);
     }
 

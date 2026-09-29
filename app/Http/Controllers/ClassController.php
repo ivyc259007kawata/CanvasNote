@@ -49,6 +49,50 @@ class ClassController extends Controller
         return response()->json($class, 201);
     }
 
+    // =========================
+// クラス編集
+// =========================
+    public function update(
+        Request $request,
+        SchoolClass $class
+    ) {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 入力内容をチェック
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'grade' => 'required|integer|min:1|max:6',
+        ]);
+
+        // クラス情報を更新
+        $class->update($validated);
+
+        return response()->json([
+            'message' => 'クラスを更新しました',
+            'class' => $class,
+        ]);
+    }
+
+    // =========================
+// クラス削除
+// =========================
+    public function destroy(SchoolClass $class)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // クラスを削除
+        $class->delete();
+
+        return response()->json([
+            'message' => 'クラスを削除しました',
+        ]);
+    }
 
     // =========================
     // クラス詳細
@@ -408,7 +452,7 @@ class ClassController extends Controller
         $student = Auth::user();
 
         $lessons = $student->schoolClasses()
-            ->with('lessons')
+            ->with('lessons.teacher')
             ->get()
             ->pluck('lessons')
             ->flatten()
@@ -417,6 +461,5 @@ class ClassController extends Controller
 
         return response()->json($lessons);
     }
-
 
 }

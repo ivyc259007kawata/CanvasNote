@@ -15,14 +15,14 @@
 
         <main class="dashboard-content">
 
-            <h2>📖 公開教材</h2>
+            <h2>📖 配布教材</h2>
 
             <p v-if="loading" class="message">
                 教材を読み込んでいます...
             </p>
 
             <p v-else-if="lessons.length === 0" class="message">
-                現在、公開されている教材はありません。
+                現在、配布されている教材はありません。
             </p>
 
             <div v-else class="lesson-list">

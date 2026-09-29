@@ -28,6 +28,16 @@
 
             </div>
 
+            <div class="class-management-actions">
+                <button class="edit-button" @click="openEditClassModal(selectedClass)">
+                    ✏️ クラスを編集
+                </button>
+
+                <button class="delete-button" @click="deleteClass">
+                    🗑️ クラスを削除
+                </button>
+            </div>
+
 
             <!-- =========================
                  生徒一覧
@@ -398,6 +408,7 @@
 
                         </div>
 
+
                     </div>
 
                 </div>
@@ -494,6 +505,66 @@
 
             </div>
 
+            <!-- =========================
+     クラス編集モーダル
+========================= -->
+            <div v-if="showEditClassModal" class="modal-overlay" @click.self="closeEditClassModal">
+                <div class="modal">
+
+                    <div class="modal-header">
+                        <h2>クラスを編集</h2>
+
+                        <button class="close-button" @click="closeEditClassModal">
+                            ×
+                        </button>
+                    </div>
+
+                    <div class="form">
+
+                        <!-- クラス名 -->
+                        <div class="form-group">
+                            <label>クラス名</label>
+
+                            <input v-model="editingClass.name" type="text" placeholder="例：1年A組">
+                        </div>
+
+                        <!-- 学年 -->
+                        <div class="form-group">
+                            <label>学年</label>
+
+                            <select v-model="editingClass.grade">
+                                <option value="">選択してください</option>
+                                <option :value="1">1年</option>
+                                <option :value="2">2年</option>
+                                <option :value="3">3年</option>
+                                <option :value="4">4年</option>
+                                <option :value="5">5年</option>
+                                <option :value="6">6年</option>
+                            </select>
+                        </div>
+
+                        <!-- エラー -->
+                        <p v-if="classUpdateError" class="error-message">
+                            {{ classUpdateError }}
+                        </p>
+
+                        <!-- ボタン -->
+                        <div class="modal-actions">
+
+                            <button class="cancel-button" @click="closeEditClassModal" :disabled="classUpdating">
+                                キャンセル
+                            </button>
+
+                            <button class="create-button" @click="updateClass" :disabled="classUpdating">
+                                {{ classUpdating ? '更新中...' : '保存' }}
+                            </button>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
         </template>
 
 
@@ -574,6 +645,19 @@ const showClassModal = ref(false)
 const classCreating = ref(false)
 const classCreateError = ref(null)
 const newClass = ref({
+    name: '',
+    grade: ''
+})
+
+// =========================
+// クラス編集用
+// =========================
+const showEditClassModal = ref(false)
+const classUpdating = ref(false)
+const classUpdateError = ref(null)
+
+const editingClass = ref({
+    id: null,
     name: '',
     grade: ''
 })
@@ -1057,6 +1141,26 @@ const openClassModal = () => {
     showClassModal.value = true
 }
 
+// =========================
+// クラス編集モーダルを開く
+// =========================
+const openEditClassModal = (schoolClass) => {
+    editingClass.value = {
+        id: schoolClass.id,
+        name: schoolClass.name,
+        grade: schoolClass.grade
+    }
+
+    classUpdateError.value = null
+    showEditClassModal.value = true
+}
+// =========================
+// クラス編集モーダルを閉じる
+// =========================
+const closeEditClassModal = () => {
+    showEditClassModal.value = false
+    classUpdateError.value = null
+}
 
 // =========================
 // クラス追加画面を閉じる
@@ -1149,6 +1253,131 @@ const createClass = async () => {
         classCreating.value = false
     }
 
+}
+
+// =========================
+// クラスを更新
+// =========================
+const updateClass = async () => {
+    classUpdateError.value = null
+
+    if (!editingClass.value.name.trim()) {
+        classUpdateError.value = 'クラス名を入力してください'
+        return
+    }
+
+    if (!editingClass.value.grade) {
+        classUpdateError.value = '学年を選択してください'
+        return
+    }
+
+    classUpdating.value = true
+
+    try {
+        const response = await fetch(
+            `/classes-json/${editingClass.value.id}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: editingClass.value.name,
+                    grade: editingClass.value.grade
+                })
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'クラスの更新に失敗しました'
+            )
+        }
+
+        // クラス一覧を更新
+        await loadClasses()
+
+        // 詳細画面のクラス情報も更新
+        if (selectedClass.value) {
+            selectedClass.value.name = editingClass.value.name
+            selectedClass.value.grade = editingClass.value.grade
+        }
+
+        closeEditClassModal()
+
+        alert('クラスを更新しました')
+
+    } catch (error) {
+        console.error(error)
+        classUpdateError.value =
+            error.message || 'クラスの更新に失敗しました'
+    } finally {
+        classUpdating.value = false
+    }
+}
+
+// =========================
+// クラスを削除
+// =========================
+const deleteClass = async () => {
+    if (!selectedClass.value) {
+        return
+    }
+
+    const className = selectedClass.value.name
+
+    const confirmed = confirm(
+        `「${className}」を削除しますか？\n\n` +
+        'このクラスとの生徒・教材の所属関係も削除されます。\n' +
+        '生徒アカウントや教材そのものは削除されません。'
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/classes-json/${selectedClass.value.id}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content'),
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'クラスの削除に失敗しました'
+            )
+        }
+
+        // クラス一覧を再読み込み
+        await loadClasses()
+
+        // 詳細画面を閉じて一覧に戻る
+        selectedClass.value = null
+
+        alert('クラスを削除しました')
+    } catch (error) {
+        console.error(error)
+
+        alert(
+            error.message || 'クラスの削除に失敗しました'
+        )
+    }
 }
 
 // =========================
@@ -1831,5 +2060,39 @@ h1 {
 
     font-size: 13px;
 
+}
+
+.edit-button {
+    margin-top: 12px;
+    padding: 8px 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.edit-button:hover {
+    background: #f5f5f5;
+}
+
+.class-management-actions {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0 24px;
+}
+
+.delete-button {
+    padding: 8px 14px;
+    border: 1px solid #d8b8b8;
+    border-radius: 8px;
+    background: #fff;
+    color: #a44;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-button:hover {
+    background: #fff5f5;
 }
 </style>

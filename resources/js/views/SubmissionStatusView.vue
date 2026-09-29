@@ -21,8 +21,10 @@
                         {{ submission.submitted_at || '未提出' }}
                     </p>
 
-                    <button v-if="submission.status === 'submitted'" class="view-answer-button"
-                        @click="viewAnswer(submission)">
+                    <button v-if="
+                        submission.status === 'submitted' ||
+                        submission.status === 'returned'
+                    " class="view-answer-button" @click="viewAnswer(submission)">
                         👀 回答を見る
                     </button>
 
@@ -30,20 +32,26 @@
 
                 <div class="status" :class="{
                     submitted: submission.status === 'submitted',
+                    returned: submission.status === 'returned',
                     draft: submission.status === 'draft',
                     'not-submitted': submission.status === 'not_submitted'
                 }">
                     {{
                         submission.status === 'submitted'
                             ? '🟢 提出済み'
-                            : submission.status === 'draft'
-                                ? '📝 下書き'
-                                : '⚪ 未着手'
+                            : submission.status === 'returned'
+                                ? '📩 返却済み'
+                                : submission.status === 'draft'
+                                    ? '📝 下書き'
+                                    : '⚪ 未着手'
                     }}
                 </div>
 
                 <!-- 採点結果 -->
-                <div v-if="submission.status === 'submitted'" class="grading-result">
+                <div v-if="
+                    submission.status === 'submitted' ||
+                    submission.status === 'returned'
+                " class="grading-result">
                     <p v-if="submission.score !== null">
                         📊 {{ submission.score }} / 100
                     </p>
@@ -215,6 +223,11 @@ button {
 .status.not-submitted {
     background: #f9fafb;
     color: #9ca3af;
+}
+
+.status.returned {
+    background: #f5f3ff;
+    color: #7c3aed;
 }
 
 .empty {

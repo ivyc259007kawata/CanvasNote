@@ -188,6 +188,18 @@ Route::middleware('auth')->post(
     [ClassController::class, 'store']
 );
 
+//クラスの編集
+Route::middleware('auth')->put(
+    '/classes-json/{class}',
+    [ClassController::class, 'update']
+);
+
+//クラスの削除
+Route::middleware('auth')->delete(
+    '/classes-json/{class}',
+    [ClassController::class, 'destroy']
+);
+
 // クラスの詳細を取得
 Route::middleware('auth')->get(
     '/classes-json/{class}',

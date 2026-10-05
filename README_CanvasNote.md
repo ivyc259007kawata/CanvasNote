@@ -330,6 +330,19 @@ npm run dev
 
 を実行します。
 
+それぞれの権限でログインをお試しください
+
+先生のアカウント
+email:test@aaa.com
+password:1234
+role: "teacher"
+
+生徒用のアカウント
+email:student@test.com
+password:Student1234!
+role: "student"
+
+
 ---
 
 ## 制作目的

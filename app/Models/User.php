@@ -72,5 +72,9 @@ class User extends Authenticatable
         );
     }
 
+    public function quizResults()
+    {
+        return $this->hasMany(QuizResult::class, 'student_id');
+    }
 
 }

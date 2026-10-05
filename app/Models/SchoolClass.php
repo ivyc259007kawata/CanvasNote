@@ -36,4 +36,14 @@ class SchoolClass extends Model
             'lesson_id'
         )->withTimestamps();
     }
+
+    public function quizzes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Quiz::class,
+            'quiz_classes',
+            'class_id',
+            'quiz_id'
+        )->withTimestamps();
+    }
 }

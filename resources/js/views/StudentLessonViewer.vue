@@ -98,6 +98,60 @@
 
         </main>
 
+        <!-- クイズ -->
+        <section v-if="quiz" class="quiz-section">
+
+            <div class="quiz-card">
+
+                <h2>❓ {{ quiz.title }}</h2>
+
+                <div v-for="(question, index) in quiz.questions" :key="question.id" class="quiz-question">
+                    <h3>
+                        {{ index + 1 }}. {{ question.question }}
+                    </h3>
+                    <label class="quiz-option">
+                        <input type="radio" :name="`question-${question.id}`" value="A"
+                            v-model="quizAnswers[question.id]">
+                        <span>{{ question.option_a }}</span>
+                    </label>
+
+                    <label class="quiz-option">
+                        <input type="radio" :name="`question-${question.id}`" value="B"
+                            v-model="quizAnswers[question.id]">
+                        <span>{{ question.option_b }}</span>
+                    </label>
+
+                    <label class="quiz-option">
+                        <input type="radio" :name="`question-${question.id}`" value="C"
+                            v-model="quizAnswers[question.id]">
+                        <span>{{ question.option_c }}</span>
+                    </label>
+
+                    <label class="quiz-option">
+                        <input type="radio" :name="`question-${question.id}`" value="D"
+                            v-model="quizAnswers[question.id]">
+                        <span>{{ question.option_d }}</span>
+                    </label>
+                </div>
+                <button class="quiz-submit-button" @click="submitQuiz">
+                    回答する
+                </button>
+                <div v-if="quizResult" class="quiz-result">
+                    <h3>クイズ結果</h3>
+
+                    <p>
+                        {{ quizResult.correct_count }}
+                        /
+                        {{ quizResult.total_count }}問正解
+                    </p>
+
+                    <p class="quiz-score">
+                        {{ quizResult.score }}点
+                    </p>
+                </div>
+            </div>
+        </section>
+
         <!-- 採点結果 -->
         <section v-if="submissionStatus === 'returned'" class="grading-result">
             <h2>📝 採点結果</h2>
@@ -163,6 +217,60 @@ const answerTool = ref('select')
 const submissionStatus = ref(null)
 const submissionScore = ref(null)
 const submissionComment = ref('')
+const quiz = ref(null)
+const quizAnswers = ref({})
+const quizResult = ref(null)
+
+
+
+const submitQuiz = async () => {
+
+    if (!quiz.value) return
+
+    try {
+
+        const response = await fetch(
+            `/student-lessons-json/${props.lesson.id}/quiz`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute('content')
+                },
+                body: JSON.stringify({
+                    answers: quizAnswers.value
+                })
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || 'クイズの送信に失敗しました。'
+            )
+        }
+
+        console.log(
+            'クイズ採点結果:',
+            data
+        )
+
+        quizResult.value = data.result
+
+    } catch (err) {
+
+        console.error(
+            'クイズ回答エラー:',
+            err
+        )
+
+        alert(err.message)
+    }
+}
 
 
 /*
@@ -251,29 +359,32 @@ const loadLesson = async () => {
 
 
         if (pages.value.length === 0) {
-
-            throw new Error(
-                'この教材にはページがありません。'
-            )
-
+            throw new Error('この教材にはページがありません。')
         }
-
-
         currentPage.value = 0
 
+        // クイズを取得
+        const quizResponse = await fetch(
+            `/student-lessons-json/${props.lesson.id}/quiz`,
+            {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            }
+        )
+        if (!quizResponse.ok) {
+            throw new Error('クイズの取得に失敗しました。')
+        }
+        quiz.value = await quizResponse.json()
+        console.log('取得したクイズ:', quiz.value)
 
         //await loadCurrentPage()
 
 
     } catch (err) {
 
-        console.error(
-            '教材読み込みエラー:',
-            err
-        )
+        console.error('教材読み込みエラー:', err)
 
-        error.value =
-            err.message
+        error.value = err.message
 
     } finally {
 
@@ -583,6 +694,7 @@ const changePage = async (index) => {
 
     await loadCurrentPage()
 }
+
 
 const saveAnswer = async () => {
     // 今いるページの最新状態を保存

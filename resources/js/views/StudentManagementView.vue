@@ -301,7 +301,43 @@
 
             </div>
         </div>
+        <!-- クラス追加モーダル -->
+        <div v-if="showClassModal" class="modal-overlay" @click.self="closeClassModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>
+                        ＋ クラスを追加
+                    </h2>
 
+                    <button class="close-button" @click="closeClassModal">
+                        ×
+                    </button>
+                </div>
+
+                <p class="modal-description">
+                    所属させるクラスを選択してください。
+                </p>
+
+                <!-- 読み込み中 -->
+                <div v-if="classLoading" class="loading-message">
+                    クラス一覧を読み込んでいます...
+                </div>
+
+                <!-- クラス一覧 -->
+                <div v-else-if="availableClasses.length > 0" class="class-option-list">
+                    <button v-for="schoolClass in availableClasses" :key="schoolClass.id" class="class-option"
+                        @click="addStudentToClass(schoolClass)">
+                        {{ schoolClass.grade }}年
+                        {{ schoolClass.name }}
+                    </button>
+                </div>
+
+                <!-- 追加できるクラスがない -->
+                <p v-else class="no-data">
+                    追加できるクラスはありません。
+                </p>
+            </div>
+        </div>
 
     </div>
 </template>
@@ -402,6 +438,10 @@ const selectedStudent = ref(null)
 const studentDetail = ref(null)
 const detailLoading = ref(false)
 
+const showClassModal = ref(false)
+const availableClasses = ref([])
+const classLoading = ref(false)
+
 const openStudent = async (student) => {
     selectedStudent.value = student
     detailLoading.value = true
@@ -475,7 +515,167 @@ const formatDateTime = (date) => {
     )
 }
 
+const openClassModal = async () => {
+    showClassModal.value = true
+    classLoading.value = true
 
+    try {
+        const response = await fetch('/classes-json', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+
+        if (!response.ok) {
+            throw new Error('クラス一覧の取得に失敗しました')
+        }
+
+        const classes = await response.json()
+
+        // 現在所属しているクラスのIDを取得
+        const currentClassIds = new Set(
+            (studentDetail.value?.classes ?? []).map(
+                schoolClass => schoolClass.id
+            )
+        )
+
+        // まだ所属していないクラスだけ表示
+        availableClasses.value = classes.filter(
+            schoolClass => !currentClassIds.has(schoolClass.id)
+        )
+    } catch (error) {
+        console.error(
+            'クラス一覧取得エラー:',
+            error
+        )
+
+        alert(
+            'クラス一覧を取得できませんでした'
+        )
+
+        closeClassModal()
+    } finally {
+        classLoading.value = false
+    }
+}
+const closeClassModal = () => {
+    showClassModal.value = false
+    availableClasses.value = []
+}
+const removeStudentFromClass = async (schoolClass) => {
+    if (!selectedStudent.value) {
+        return
+    }
+
+    const confirmed = window.confirm(
+        `「${selectedStudent.value.name}」を${schoolClass.grade}年 ${schoolClass.name}から外しますか？\n\n生徒アカウント自体は削除されません。`
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/classes-json/${schoolClass.id}/students/${selectedStudent.value.id}`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                }
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ??
+                'クラスから外すことができませんでした'
+            )
+        }
+
+        alert(
+            `${schoolClass.grade}年 ${schoolClass.name}から外しました`
+        )
+
+        // 生徒詳細を再取得して所属クラスを更新
+        await openStudent(selectedStudent.value)
+
+    } catch (error) {
+        console.error(
+            'クラス削除エラー:',
+            error
+        )
+
+        alert(
+            'クラスから外すことができませんでした'
+        )
+    }
+}
+
+const addStudentToClass = async (schoolClass) => {
+    if (!selectedStudent.value) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/classes-json/${schoolClass.id}/students`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content')
+                },
+                body: JSON.stringify({
+                    user_id: selectedStudent.value.id
+                })
+            }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ??
+                'クラスへの追加に失敗しました'
+            )
+        }
+
+        alert(
+            `${schoolClass.grade}年 ${schoolClass.name}に追加しました`
+        )
+
+        // モーダルを閉じる
+        closeClassModal()
+
+        // 生徒詳細を再取得して所属クラスを更新
+        await openStudent(selectedStudent.value)
+
+    } catch (error) {
+        console.error(
+            'クラス追加エラー:',
+            error
+        )
+
+        alert(
+            'クラスに追加できませんでした'
+        )
+    }
+}
 
 
 // =========================
@@ -1186,5 +1386,27 @@ onMounted(() => {
 .remove-class-button:hover {
     background: #ddd;
     color: #333;
+}
+
+.class-option-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.class-option {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+    text-align: left;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.class-option:hover {
+    background: #f5f5f5;
 }
 </style>

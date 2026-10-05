@@ -45,4 +45,9 @@ class Lesson extends Model
             Submission::class
         );
     }
+
+    public function quizzes(): HasMany
+    {
+        return $this->hasMany(Quiz::class);
+    }
 }

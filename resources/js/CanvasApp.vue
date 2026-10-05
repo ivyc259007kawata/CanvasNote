@@ -73,13 +73,6 @@
                         <span>生徒</span>
                     </button>
 
-                    <!-- 宿題 -->
-                    <button class="menu-item" :class="{ active: page === 'homework' }" @click="openHomework">
-                        <span class="menu-icon">📝</span>
-                        <span>宿題</span>
-                    </button>
-
-
                     <!-- クイズ -->
                     <button class="menu-item" :class="{ active: page === 'quiz' }" @click="openQuiz">
                         <span class="menu-icon">❓</span>
@@ -129,38 +122,8 @@
                 <!-- 生徒管理 -->
                 <StudentManagementView v-else-if="page === 'students'" @back="backDashboard" />
 
-                <!-- 宿題 -->
-
-                <div v-else-if="page === 'homework'" class="coming-soon">
-
-                    <div class="coming-icon">
-                        📝
-                    </div>
-
-                    <h1>宿題</h1>
-
-                    <p>
-                        宿題機能を準備中です。
-                    </p>
-
-                </div>
-
-
                 <!-- クイズ -->
-
-                <div v-else-if="page === 'quiz'" class="coming-soon">
-
-                    <div class="coming-icon">
-                        ❓
-                    </div>
-
-                    <h1>クイズ</h1>
-
-                    <p>
-                        クイズ機能を準備中です。
-                    </p>
-
-                </div>
+                <QuizView v-else-if="page === 'quiz'" />
 
 
                 <!-- 設定 -->
@@ -209,6 +172,9 @@ import SubmissionAnswerView
 
 import StudentManagementView
     from './views/StudentManagementView.vue'
+
+import QuizView from './views/QuizView.vue'
+
 
 // =========================
 // ページ
@@ -304,15 +270,6 @@ function openStudentManagement() {
     page.value = 'students'
 }
 
-// =========================
-// 宿題
-// =========================
-
-function openHomework() {
-
-    page.value = 'homework'
-
-}
 
 
 // =========================

@@ -5,6 +5,7 @@ use App\Http\Controllers\LessonController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\SubmissionController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\QuizController;
 
 
 // ========================================
@@ -50,7 +51,59 @@ Route::middleware('auth')->group(function () {
 
 });
 
+// ========================================
+// クイズ
+// ========================================
 
+Route::middleware('auth')->get(
+    '/quizzes-json',
+    [QuizController::class, 'index']
+);
+
+Route::middleware('auth')->post(
+    '/quizzes-json',
+    [QuizController::class, 'store']
+);
+
+Route::middleware('auth')->get(
+    '/quizzes-json/{quiz}',
+    [QuizController::class, 'show']
+);
+
+Route::middleware('auth')->put(
+    '/quizzes-json/{quiz}',
+    [QuizController::class, 'update']
+);
+
+Route::middleware('auth')->post(
+    '/quizzes-json/{quiz}/activate',
+    [QuizController::class, 'activate']
+);
+
+Route::middleware('auth')->post(
+    '/quizzes-json/{quiz}/deactivate',
+    [QuizController::class, 'deactivate']
+);
+
+Route::middleware('auth')->get(
+    '/quizzes-json/{quiz}/results',
+    [QuizController::class, 'results']
+);
+
+Route::middleware('auth')->get(
+    '/quizzes-json/{quiz}',
+    [QuizController::class, 'show']
+);
+
+Route::middleware('auth')->put(
+    '/quizzes-json/{quiz}',
+    [QuizController::class, 'update']
+);
+
+Route::middleware('auth')->delete(
+    '/quizzes-json/{quiz}',
+    [QuizController::class, 'destroy']
+);
 // ========================================
 // 教材管理（先生）
 // ========================================
@@ -121,10 +174,33 @@ Route::middleware('auth')->get(
     [ClassController::class, 'studentLessons']
 );
 
+Route::middleware('auth')->get(
+    '/student-active-quizzes-json',
+    [QuizController::class, 'activeQuizzes']
+);
+
+Route::middleware('auth')->post(
+    '/student-quizzes-json/{quiz}/submit',
+    [QuizController::class, 'submitRealtimeQuiz']
+);
+
+
+
 // 生徒が教材のCanvasデータを取得
 Route::middleware('auth')->get(
     '/student-lessons-json/{lesson}/canvas',
     [LessonController::class, 'apiGetPublicCanvas']
+);
+
+//クイズ機能を生徒が取得
+Route::middleware('auth')->get(
+    '/student-lessons-json/{lesson}/quiz',
+    [QuizController::class, 'studentQuiz']
+);
+// 生徒がクイズを回答
+Route::middleware('auth')->post(
+    '/student-lessons-json/{lesson}/quiz',
+    [QuizController::class, 'submitStudentQuiz']
 );
 
 

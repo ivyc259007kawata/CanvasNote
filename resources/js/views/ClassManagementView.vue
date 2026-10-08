@@ -1534,15 +1534,15 @@ h1 {
     border: 1px solid #ddd;
     border-radius: 12px;
     background: white;
+    cursor: pointer;
     transition: 0.2s;
 }
 
 .class-card:hover {
     border-color: #93c5fd;
     box-shadow:
-        0 4px 12px rgba(0, 0, 0, 0.06);
+        0 4px 12px rgba(0, 0, 0, 0.08);
 }
-
 
 /* クラスアイコン */
 
@@ -1557,7 +1557,6 @@ h1 {
     font-size: 24px;
 }
 
-
 /* クラス情報 */
 
 .class-info h3 {
@@ -1565,13 +1564,11 @@ h1 {
     font-size: 18px;
 }
 
-
 .class-info p {
     margin: 3px 0;
     color: #666;
     font-size: 14px;
 }
-
 
 /* エラー */
 
@@ -1601,21 +1598,6 @@ h1 {
     text-decoration: underline;
 }
 
-
-/* =========================
-   クラスカード
-========================= */
-
-.class-card {
-    cursor: pointer;
-}
-
-.class-card:hover {
-    border-color: #93c5fd;
-    box-shadow:
-        0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
 /* 詳細を見る */
 
 .detail-text {
@@ -1624,7 +1606,6 @@ h1 {
     color: #2563eb;
     font-size: 13px;
 }
-
 
 /* =========================
    生徒一覧
@@ -1637,19 +1618,15 @@ h1 {
     padding: 24px;
 }
 
-
 .student-section .section-header {
     margin-bottom: 20px;
 }
-
 
 .student-section .section-header h2 {
     margin: 0 0 5px;
 }
 
-
 .student-section .section-header p {
-
     margin: 0;
     color: #888;
     font-size: 14px;
@@ -1666,7 +1643,6 @@ h1 {
             minmax(260px, 1fr));
     gap: 16px;
 }
-
 
 .student-card {
     display: flex;
@@ -1719,7 +1695,6 @@ h1 {
     background: #fef2f2;
 }
 
-
 .student-icon {
     width: 44px;
     height: 44px;
@@ -1741,13 +1716,11 @@ h1 {
     font-size: 16px;
 }
 
-
 .student-info p {
     margin: 0;
     color: #777;
     font-size: 13px;
 }
-
 
 /* =========================
    詳細読み込み中
@@ -1763,23 +1736,6 @@ h1 {
     color: white;
     font-size: 14px;
 }
-
-/* =========================
-   モーダル背景
-========================= */
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background:
-        rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-}
-
 
 /* =========================
    モーダル
@@ -1798,23 +1754,18 @@ h1 {
         0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-
 /* =========================
    モーダルヘッダー
 ========================= */
 
 .modal-header {
-    display: flex;
-    justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 25px;
 }
 
-
 .modal-header h2 {
     margin: 0 0 8px;
 }
-
 
 .modal-header p {
     margin: 0;
@@ -1861,12 +1812,10 @@ h1 {
     flex: 1;
 }
 
-
 .select-button {
     padding: 8px 16px;
     background: #3b82f6;
 }
-
 
 /* =========================
    メッセージ
@@ -1924,7 +1873,6 @@ h1 {
     border-color: #3b82f6;
 }
 
-
 /* =========================
    フォームエラー
 ========================= */
@@ -1938,15 +1886,11 @@ h1 {
     font-size: 14px;
 }
 
-
 /* =========================
    モーダルボタン
 ========================= */
 
 .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
     margin-top: 25px;
 }
 
@@ -1994,18 +1938,13 @@ h1 {
     padding: 24px;
 }
 
-
-/* 教材一覧 */
-
 .lesson-list {
     display: grid;
     grid-template-columns:
         repeat(auto-fill,
             minmax(260px, 1fr));
     gap: 16px;
-
 }
-
 
 /* 教材カード */
 
@@ -2020,12 +1959,12 @@ h1 {
     box-sizing: border-box;
 }
 
-
 .lesson-card:hover {
     border-color: #93c5fd;
 }
 
 /* 教材アイコン */
+
 .lesson-icon {
     width: 44px;
     height: 44px;
@@ -2038,28 +1977,21 @@ h1 {
 }
 
 /* 教材情報 */
+
 .lesson-info {
     flex: 1;
     min-width: 0;
 }
 
 .lesson-info h3 {
-
     margin: 0 0 5px;
-
     font-size: 16px;
-
 }
 
-
 .lesson-info p {
-
     margin: 0;
-
     color: #777;
-
     font-size: 13px;
-
 }
 
 .edit-button {

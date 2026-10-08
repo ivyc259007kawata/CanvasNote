@@ -90,6 +90,11 @@ Route::middleware('auth')->get(
     [QuizController::class, 'results']
 );
 
+Route::middleware('auth')->delete(
+    '/quizzes-json/{quiz}/results',
+    [QuizController::class, 'resetResults']
+);
+
 Route::middleware('auth')->get(
     '/quizzes-json/{quiz}',
     [QuizController::class, 'show']
@@ -333,6 +338,48 @@ Route::middleware('auth')->get(
 Route::middleware('auth')->post(
     '/students-json',
     [ClassController::class, 'storeStudent']
+);
+
+// 先生アカウントを新規作成
+Route::middleware('auth')->post(
+    '/teachers-json',
+    [ClassController::class, 'storeTeacher']
+);
+
+// 先生一覧取得
+Route::middleware('auth')->get(
+    '/teachers-json',
+    [ClassController::class, 'teachers']
+);
+
+// 先生が担当できるクラス一覧
+Route::middleware('auth')->get(
+    '/teachers-json/classes',
+    [ClassController::class, 'teacherClasses']
+);
+
+// 先生に担当クラスを設定
+Route::middleware('auth')->post(
+    '/teachers-json/{teacher}/classes',
+    [ClassController::class, 'assignTeacherClass']
+);
+
+// 先生の担当クラスを解除
+Route::middleware('auth')->delete(
+    '/teachers-json/{teacher}/classes/{class}',
+    [ClassController::class, 'removeTeacherClass']
+);
+
+// 先生詳細取得
+Route::middleware('auth')->get(
+    '/teachers-json/{teacher}',
+    [ClassController::class, 'teacher']
+);
+
+// 先生アカウント削除
+Route::middleware('auth')->delete(
+    '/teachers-json/{teacher}',
+    [ClassController::class, 'destroyTeacher']
 );
 
 //生徒詳細を表示

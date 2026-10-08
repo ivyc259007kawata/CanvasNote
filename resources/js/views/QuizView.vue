@@ -396,7 +396,11 @@
 
                 </div>
 
-                <div class="modal-actions">
+                <div class="modal-actions result-modal-actions">
+                    <button class="reset-results-button" @click="resetQuizResults">
+                        回答結果をリセット
+                    </button>
+
                     <button class="cancel-button" @click="closeResults">
                         閉じる
                     </button>
@@ -1054,6 +1058,92 @@ function closeResults() {
     selectedQuizResult.value = null
 }
 
+async function resetQuizResults() {
+    if (!selectedQuizResult.value) {
+        return
+    }
+
+    const quiz = selectedQuizResult.value.quiz
+
+    const confirmed = window.confirm(
+        `「${quiz.title}」の回答結果をリセットしますか？\n\n` +
+        `このクイズの生徒の回答結果がすべて削除されます。\n` +
+        `この操作は元に戻せません。`
+    )
+
+    if (!confirmed) {
+        return
+    }
+
+    try {
+        const response = await fetch(
+            `/quizzes-json/${quiz.id}/results`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN':
+                        document
+                            .querySelector(
+                                'meta[name="csrf-token"]'
+                            )
+                            ?.getAttribute('content'),
+
+                    'Accept': 'application/json'
+                }
+            }
+        )
+
+        const text = await response.text()
+
+        console.log(
+            '回答結果リセットレスポンス:',
+            response.status,
+            text
+        )
+
+        let data
+
+        try {
+            data = JSON.parse(text)
+        } catch (error) {
+            console.error(
+                'JSONとして解析できませんでした:',
+                text
+            )
+
+            alert(
+                'サーバーからJSONではないレスポンスが返ってきました'
+            )
+
+            return
+        }
+
+        if (!response.ok) {
+            alert(
+                data.message ??
+                '回答結果のリセットに失敗しました'
+            )
+
+            return
+        }
+
+        alert('回答結果をリセットしました')
+
+        // 結果を再取得
+        await showQuizResults(quiz)
+
+    } catch (error) {
+        console.error(
+            '回答結果リセットエラー:',
+            error
+        )
+
+        alert(
+            '通信エラーが発生しました'
+        )
+    }
+}
+
 // =========================
 // 初期処理
 // =========================
@@ -1066,7 +1156,6 @@ onMounted(() => {
 
 </script>
 
-
 <style scoped>
 .quiz-page {
     min-height: 100vh;
@@ -1074,7 +1163,6 @@ onMounted(() => {
     background: #f8fafc;
     box-sizing: border-box;
 }
-
 
 /* =========================
    ヘッダー
@@ -1087,18 +1175,15 @@ onMounted(() => {
     margin-bottom: 30px;
 }
 
-
 .page-header h1 {
     margin: 0 0 8px;
     font-size: 28px;
 }
 
-
 .page-header p {
     margin: 0;
     color: #64748b;
 }
-
 
 /* =========================
    作成ボタン
@@ -1115,11 +1200,9 @@ onMounted(() => {
     cursor: pointer;
 }
 
-
 .create-button:hover {
     background: #1d4ed8;
 }
-
 
 /* =========================
    クイズ一覧
@@ -1131,7 +1214,6 @@ onMounted(() => {
     gap: 14px;
 }
 
-
 .quiz-card {
     padding: 20px;
     background: white;
@@ -1139,24 +1221,20 @@ onMounted(() => {
     border-radius: 10px;
 }
 
-
 .quiz-info h2 {
     margin: 0 0 8px;
     font-size: 18px;
 }
-
 
 .quiz-info p {
     margin: 0 0 8px;
     color: #64748b;
 }
 
-
 .quiz-info span {
     color: #475569;
     font-size: 14px;
 }
-
 
 /* =========================
    空状態
@@ -1170,40 +1248,24 @@ onMounted(() => {
     border-radius: 10px;
 }
 
-
 .empty-icon {
     margin-bottom: 15px;
     font-size: 50px;
 }
-
 
 .empty-state h2 {
     margin: 0 0 8px;
     font-size: 20px;
 }
 
-
 .empty-state p {
     margin: 0;
     color: #64748b;
 }
 
-
 /* =========================
    モーダル
 ========================= */
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-}
-
 
 .modal {
     width: 100%;
@@ -1216,28 +1278,26 @@ onMounted(() => {
     box-sizing: border-box;
 }
 
+/* =========================
+   モーダルヘッダー
+========================= */
 
 .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 25px;
 }
-
 
 .modal-header h2 {
     margin: 0;
 }
 
+/* =========================
+   閉じるボタン
+========================= */
 
 .close-button {
-    border: none;
-    background: transparent;
     font-size: 28px;
     color: #64748b;
-    cursor: pointer;
 }
-
 
 /* =========================
    フォーム
@@ -1250,13 +1310,11 @@ onMounted(() => {
     margin-bottom: 18px;
 }
 
-
 .form-group label {
     font-size: 14px;
     font-weight: 600;
     color: #334155;
 }
-
 
 .form-group input,
 .form-group textarea,
@@ -1269,12 +1327,13 @@ onMounted(() => {
     box-sizing: border-box;
 }
 
-
 .form-group textarea {
-
     resize: vertical;
-
 }
+
+/* =========================
+   クラス選択
+========================= */
 
 .class-checkboxes {
     display: flex;
@@ -1284,9 +1343,7 @@ onMounted(() => {
     border: 1px solid #cbd5e1;
     border-radius: 7px;
     background: #f8fafc;
-
 }
-
 
 .class-checkbox {
     display: flex;
@@ -1296,14 +1353,15 @@ onMounted(() => {
     font-size: 14px;
     font-weight: normal;
     cursor: pointer;
-
 }
-
 
 .class-checkbox input {
     width: auto;
 }
 
+/* =========================
+   問題
+========================= */
 
 .question-box {
     margin-top: 25px;
@@ -1324,15 +1382,11 @@ onMounted(() => {
     gap: 10px;
 }
 
-
 /* =========================
-   ボタン
+   モーダルボタン
 ========================= */
 
 .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
     margin-top: 25px;
 }
 
@@ -1360,6 +1414,10 @@ onMounted(() => {
 .save-button:hover {
     background: #1d4ed8;
 }
+
+/* =========================
+   クイズ状態
+========================= */
 
 .quiz-status {
     margin-top: 15px;
@@ -1455,6 +1513,10 @@ onMounted(() => {
     background: #f3f4f6;
 }
 
+/* =========================
+   回答概要
+========================= */
+
 .answer-summary {
     display: flex;
     align-items: center;
@@ -1512,7 +1574,6 @@ onMounted(() => {
 
 .student-score strong {
     min-width: 48px;
-
     font-size: 16px;
     text-align: right;
 }
@@ -1520,6 +1581,10 @@ onMounted(() => {
 .unanswered-score {
     color: #9ca3af;
 }
+
+/* =========================
+   問題編集
+========================= */
 
 .question-header {
     display: flex;
@@ -1558,6 +1623,10 @@ onMounted(() => {
 .add-question-button:hover {
     background: #f1f5f9;
 }
+
+/* =========================
+   公開・操作ボタン
+========================= */
 
 .publish-button {
     padding: 8px 14px;
@@ -1622,6 +1691,28 @@ onMounted(() => {
 }
 
 .delete-quiz-button:hover {
+    background: #fef2f2;
+}
+
+.result-modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.reset-results-button {
+    padding: 9px 14px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: white;
+    color: #dc2626;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.reset-results-button:hover {
     background: #fef2f2;
 }
 </style>

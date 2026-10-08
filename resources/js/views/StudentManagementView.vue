@@ -264,19 +264,17 @@
 
                 <!-- 名前 -->
                 <div class="form-group">
-                    <label>
-                        名前
-                    </label>
-
+                    <label>名前</label>
                     <input v-model="studentForm.name" type="text" placeholder="例：山田太郎">
                 </div>
 
-                <!-- メールアドレス -->
                 <div class="form-group">
-                    <label>
-                        メールアドレス
-                    </label>
+                    <label>ログインID</label>
+                    <input v-model="studentForm.login_id" type="text" placeholder="例：student05">
+                </div>
 
+                <div class="form-group">
+                    <label>メールアドレス</label>
                     <input v-model="studentForm.email" type="email" placeholder="例：yamada@example.com">
                 </div>
 
@@ -377,6 +375,7 @@ const openStudentModal = () => {
 
 const studentForm = ref({
     name: '',
+    login_id: '',
     email: '',
     password: ''
 })
@@ -686,6 +685,7 @@ const closeStudentModal = () => {
     showStudentModal.value = false
     studentForm.value = {
         name: '',
+        login_id: '',
         email: '',
         password: ''
     }
@@ -702,6 +702,10 @@ const createStudent = async () => {
 
     if (!studentForm.value.name) {
         formError.value = '名前を入力してください'
+        return
+    }
+    if (!studentForm.value.login_id) {
+        formError.value = 'ログインIDを入力してください'
         return
     }
 
@@ -743,6 +747,7 @@ const createStudent = async () => {
 
                 body: JSON.stringify({
                     name: studentForm.value.name,
+                    login_id: studentForm.value.login_id,
                     email: studentForm.value.email,
                     password: studentForm.value.password
                 })
@@ -751,17 +756,36 @@ const createStudent = async () => {
 
         const data = await response.json()
         if (!response.ok) {
-            if (data.errors) {
-                const firstError =
-                    Object.values(data.errors)[0]
-                formError.value =
-                    firstError?.[0] ??
-                    '入力内容を確認してください'
-            } else {
-                formError.value =
-                    data.message ??
-                    '生徒アカウントを作成できませんでした'
+            if (data.errors?.login_id) {
+                alert(
+                    'ログインIDが重複しているため登録できません。'
+                )
+                return
             }
+
+            if (data.errors?.email) {
+                alert(
+                    'メールアドレスが重複しているため登録できません。'
+                )
+                return
+            }
+
+            if (data.errors?.name) {
+                formError.value =
+                    data.errors.name[0]
+                return
+            }
+
+            if (data.errors?.password) {
+                formError.value =
+                    data.errors.password[0]
+                return
+            }
+
+            formError.value =
+                data.message ??
+                '入力内容を確認してください'
+
             return
         }
         alert('生徒アカウントを作成しました！')
@@ -855,7 +879,6 @@ onMounted(() => {
     padding: 32px;
 }
 
-
 /* =========================
    ヘッダー
 ========================= */
@@ -876,7 +899,6 @@ onMounted(() => {
     color: #666;
 }
 
-
 /* =========================
    追加ボタン
 ========================= */
@@ -894,7 +916,6 @@ onMounted(() => {
     opacity: 0.85;
 }
 
-
 /* =========================
    生徒一覧
 ========================= */
@@ -904,7 +925,6 @@ onMounted(() => {
     flex-direction: column;
     gap: 12px;
 }
-
 
 /* =========================
    生徒カード
@@ -925,7 +945,6 @@ onMounted(() => {
     background: #f8f8f8;
 }
 
-
 /* =========================
    アイコン
 ========================= */
@@ -933,7 +952,6 @@ onMounted(() => {
 .student-icon {
     font-size: 28px;
 }
-
 
 /* =========================
    生徒情報
@@ -953,7 +971,6 @@ onMounted(() => {
     color: #777;
 }
 
-
 /* =========================
    矢印
 ========================= */
@@ -962,7 +979,6 @@ onMounted(() => {
     font-size: 22px;
     color: #999;
 }
-
 
 /* =========================
    空の場合
@@ -974,7 +990,6 @@ onMounted(() => {
     color: #777;
 }
 
-
 /* =========================
    ローディング
 ========================= */
@@ -985,20 +1000,9 @@ onMounted(() => {
     color: #777;
 }
 
-
 /* =========================
    モーダル
 ========================= */
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 1000;
-}
 
 .modal {
     width: 500px;
@@ -1008,28 +1012,31 @@ onMounted(() => {
     background: white;
 }
 
-
 /* =========================
    モーダルヘッダー
 ========================= */
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+/*
+   display / justify-content / align-items は
+   app.css の共通CSSを使用
+*/
 
 .modal-header h2 {
     margin: 0;
 }
 
-.close-button {
-    border: none;
-    background: transparent;
-    font-size: 24px;
-    cursor: pointer;
-}
+/* =========================
+   閉じるボタン
+========================= */
 
+/*
+   border / background / cursor は
+   app.css の共通CSSを使用
+*/
+
+.close-button {
+    font-size: 24px;
+}
 
 /* =========================
    説明
@@ -1039,7 +1046,6 @@ onMounted(() => {
     color: #666;
     margin-bottom: 20px;
 }
-
 
 /* =========================
    モーダル内生徒一覧
@@ -1076,8 +1082,6 @@ onMounted(() => {
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 6px;
     font-weight: bold;
 }
 
@@ -1095,17 +1099,13 @@ onMounted(() => {
     border-color: #999;
 }
 
-
 /* =========================
    フォームエラー
 ========================= */
 
 .form-error {
     margin: 12px 0;
-    color: #dc2626;
-    font-size: 14px;
 }
-
 
 /* =========================
    作成ボタン
@@ -1130,6 +1130,10 @@ onMounted(() => {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* =========================
+   生徒詳細
+========================= */
 
 .student-detail {
     max-width: 800px;
@@ -1180,11 +1184,20 @@ onMounted(() => {
     margin-top: 0;
 }
 
-.class-list,
-.submission-list {
+/* =========================
+   クラス・提出一覧
+========================= */
+
+.class-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.submission-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .no-data {
@@ -1196,19 +1209,12 @@ onMounted(() => {
    提出状況
 ========================= */
 
-.submission-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
 .submission-item {
     padding: 18px;
     border: 1px solid #eee;
     border-radius: 10px;
     background: #fafafa;
 }
-
 
 /* =========================
    課題名・状態
@@ -1224,7 +1230,6 @@ onMounted(() => {
 .submission-title {
     font-size: 16px;
 }
-
 
 /* =========================
    提出状態
@@ -1251,7 +1256,6 @@ onMounted(() => {
     color: #777;
 }
 
-
 /* =========================
    提出情報
 ========================= */
@@ -1268,7 +1272,6 @@ onMounted(() => {
     font-size: 13px;
 }
 
-
 /* =========================
    点数
 ========================= */
@@ -1283,7 +1286,6 @@ onMounted(() => {
     font-size: 14px;
     font-weight: normal;
 }
-
 
 /* =========================
    コメント

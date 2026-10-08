@@ -198,9 +198,8 @@ class ClassController extends Controller
     }
 
     // =========================
-    // 生徒アカウント作成
-    // =========================
-
+// 生徒アカウント作成
+// =========================
     public function storeStudent(Request $request)
     {
         // 先生以外はアクセス禁止
@@ -211,6 +210,7 @@ class ClassController extends Controller
         // 入力内容をチェック
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'login_id' => 'required|string|max:255|unique:users,login_id',
             'email' => 'required|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
         ]);
@@ -218,6 +218,7 @@ class ClassController extends Controller
         // 生徒アカウントを作成
         $student = User::create([
             'name' => $validated['name'],
+            'login_id' => $validated['login_id'],
             'email' => $validated['email'],
             'password' => $validated['password'],
             'role' => 'student',
@@ -228,11 +229,224 @@ class ClassController extends Controller
             'student' => [
                 'id' => $student->id,
                 'name' => $student->name,
+                'login_id' => $student->login_id,
                 'email' => $student->email,
             ],
         ], 201);
     }
 
+    // =========================
+// 先生アカウント作成
+// =========================
+    public function storeTeacher(Request $request)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 入力内容をチェック
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'login_id' => 'required|string|max:255|unique:users,login_id',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // 先生アカウントを作成
+        $teacher = User::create([
+            'name' => $validated['name'],
+            'login_id' => $validated['login_id'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => 'teacher',
+        ]);
+
+        return response()->json([
+            'message' => '先生アカウントを作成しました',
+            'teacher' => [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'login_id' => $teacher->login_id,
+                'email' => $teacher->email,
+            ],
+        ], 201);
+    }
+
+    // =========================
+// 先生一覧取得
+// =========================
+    public function teachers()
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        $teachers = User::where('role', 'teacher')
+            ->select(
+                'id',
+                'name',
+                'login_id',
+                'email'
+            )
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'teachers' => $teachers,
+        ]);
+    }
+
+    // =========================
+// 先生詳細
+// =========================
+    public function teacher(User $teacher)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 先生アカウント以外は表示しない
+        if ($teacher->role !== 'teacher') {
+            abort(404);
+        }
+
+        // 所属クラスを取得
+        $teacher->load('schoolClasses');
+
+        return response()->json([
+            'teacher' => [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'login_id' => $teacher->login_id,
+                'email' => $teacher->email,
+            ],
+
+            'classes' => $teacher->schoolClasses
+                ->map(function ($class) {
+                    return [
+                        'id' => $class->id,
+                        'name' => $class->name,
+                        'grade' => $class->grade,
+                    ];
+                })
+                ->values(),
+        ]);
+    }
+
+    // =========================
+// 先生の担当クラス候補一覧
+// =========================
+    public function teacherClasses()
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        $classes = SchoolClass::query()
+            ->orderBy('grade')
+            ->orderBy('name')
+            ->get([
+                'id',
+                'name',
+                'grade',
+            ]);
+
+        return response()->json([
+            'classes' => $classes,
+        ]);
+    }
+
+
+    // =========================
+// 先生に担当クラスを設定
+// =========================
+    public function assignTeacherClass(
+        Request $request,
+        User $teacher
+    ) {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 先生アカウント以外は対象にできない
+        if ($teacher->role !== 'teacher') {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'class_id' => 'required|integer|exists:classes,id',
+        ]);
+
+        // 担当クラスを設定
+        $teacher->schoolClasses()->syncWithoutDetaching([
+            $validated['class_id'],
+        ]);
+
+        return response()->json([
+            'message' => '担当クラスを設定しました',
+        ]);
+    }
+
+
+    // =========================
+// 先生の担当クラスを解除
+// =========================
+    public function removeTeacherClass(
+        User $teacher,
+        SchoolClass $class
+    ) {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 先生アカウント以外は対象にできない
+        if ($teacher->role !== 'teacher') {
+            abort(404);
+        }
+
+        // 担当クラスとの関係だけを削除
+        $teacher->schoolClasses()->detach($class->id);
+
+        return response()->json([
+            'message' => '担当クラスを解除しました',
+        ]);
+    }
+
+    public function destroyTeacher(User $teacher)
+    {
+        // 先生以外はアクセス禁止
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        // 先生アカウント以外は削除しない
+        if ($teacher->role !== 'teacher') {
+            abort(404);
+        }
+
+        // 自分自身は削除できないようにする
+        if ($teacher->id === Auth::id()) {
+            return response()->json([
+                'message' => '自分自身のアカウントは削除できません。'
+            ], 422);
+        }
+
+        // 所属クラスとの関係を解除
+        $teacher->schoolClasses()->detach();
+
+        // 先生アカウントを削除
+        $teacher->delete();
+
+        return response()->json([
+            'message' => '先生アカウントを削除しました。'
+        ]);
+    }
 
     // =========================
     // クラスに生徒を追加

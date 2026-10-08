@@ -1,3 +1,96 @@
 @tailwind base;
+
 @tailwind components;
+
 @tailwind utilities;
+
+
+/* ========================================
+   CanvasNote 共通UI
+======================================== */
+
+
+/* =========================
+   モーダル背景
+========================= */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+}
+
+
+/* =========================
+   モーダルヘッダー
+========================= */
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+
+/* =========================
+   閉じるボタン
+========================= */
+
+.close-button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+
+/* =========================
+   フォーム
+========================= */
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+
+/* =========================
+   フォームエラー
+========================= */
+
+.form-error {
+    color: #dc2626;
+    font-size: 14px;
+}
+
+
+/* =========================
+   モーダルボタン
+========================= */
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+
+/* =========================
+   キャンセルボタン
+========================= */
+
+.cancel-button {
+    cursor: pointer;
+}

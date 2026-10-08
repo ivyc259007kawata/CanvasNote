@@ -53,25 +53,33 @@ class QuizController extends Controller
         $quiz->load([
             'lesson',
             'createdBy',
-            'classes',
+            'classes.users',
         ]);
 
         $students = $quiz->classes
             ->flatMap(function ($class) {
-                return $class->students;
+                return $class->users
+                    ->where('role', 'student')
+                    ->map(function ($student) use ($class) {
+                        return [
+                            'id' => $student->id,
+                            'name' => $student->name,
+                            'class_name' => $class->name,
+                        ];
+                    });
             })
             ->unique('id')
             ->values()
             ->map(function ($student) use ($quiz) {
 
                 $answer = $quiz->results()
-                    ->where('student_id', $student->id)
+                    ->where('student_id', $student['id'])
                     ->first();
 
                 return [
-                    'id' => $student->id,
-                    'name' => $student->name,
-                    'class_name' => $student->class->name ?? '',
+                    'id' => $student['id'],
+                    'name' => $student['name'],
+                    'class_name' => $student['class_name'],
                     'answered' => $answer !== null,
                     'score' => $answer?->score,
                     'correct_count' => $answer?->correct_count,
@@ -89,18 +97,30 @@ class QuizController extends Controller
 
             'classes' => $quiz->classes,
 
-            // 回答済み人数
             'answered_students' => $students
                 ->where('answered', true)
                 ->count(),
 
-            // 対象生徒数
             'total_students' => $students->count(),
 
-            // 生徒一覧
             'students' => $students,
         ]);
     }
+
+    public function resetResults(Quiz $quiz)
+    {
+        if (Auth::user()->role !== 'teacher') {
+            abort(403);
+        }
+
+        $deletedCount = $quiz->results()->delete();
+
+        return response()->json([
+            'message' => '回答結果をリセットしました。',
+            'deleted_count' => $deletedCount,
+        ]);
+    }
+
     /**
      * クイズを作成
      */

@@ -334,11 +334,13 @@ npm run dev
 
 先生のアカウント
 email:test@aaa.com
+ID:teacher01
 password:1234
 role: "teacher"
 
 生徒用のアカウント
 email:student@test.com
+ID:student01
 password:Student1234!
 role: "student"
 

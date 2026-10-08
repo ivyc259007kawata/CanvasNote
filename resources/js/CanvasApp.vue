@@ -73,6 +73,12 @@
                         <span>生徒</span>
                     </button>
 
+                    <!-- 先生 -->
+                    <button class="menu-item" :class="{ active: page === 'teachers' }" @click="openTeacherManagement">
+                        <span class="menu-icon">👨‍🏫</span>
+                        <span>先生</span>
+                    </button>
+
                     <!-- クイズ -->
                     <button class="menu-item" :class="{ active: page === 'quiz' }" @click="openQuiz">
                         <span class="menu-icon">❓</span>
@@ -121,6 +127,9 @@
 
                 <!-- 生徒管理 -->
                 <StudentManagementView v-else-if="page === 'students'" @back="backDashboard" />
+
+                <!-- 先生管理 -->
+                <TeacherManagementView v-else-if="page === 'teachers'" @back="backDashboard" />
 
                 <!-- クイズ -->
                 <QuizView v-else-if="page === 'quiz'" />
@@ -172,6 +181,9 @@ import SubmissionAnswerView
 
 import StudentManagementView
     from './views/StudentManagementView.vue'
+
+import TeacherManagementView
+    from './views/TeacherManagementView.vue'
 
 import QuizView from './views/QuizView.vue'
 
@@ -270,7 +282,12 @@ function openStudentManagement() {
     page.value = 'students'
 }
 
-
+// =========================
+// 先生管理
+// =========================
+function openTeacherManagement() {
+    page.value = 'teachers'
+}
 
 // =========================
 // クイズ
